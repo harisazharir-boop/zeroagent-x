@@ -22,6 +22,7 @@ from zeroagent.blackbox.history import history
 from zeroagent.blackbox.replay import replay
 from zeroagent.blackbox.storage import LocalStorage, StorageError
 from zeroagent.config import load_settings
+from zeroagent.context import ContextError, select_context
 from zeroagent.core.repository import AnalysisReport, analyze_repository
 from zeroagent.proof.engine import verify_execution
 from zeroagent.routing.router import RoutingError, run_task
@@ -36,6 +37,7 @@ TEXT = "#F8FAFC"
 CONTROL_CHARACTERS = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
 MENU = (
     "Analyze Repository",
+    "Ask About Repository",
     "Run Local Agent",
     "Verify Execution",
     "Execution History",
@@ -57,6 +59,7 @@ class TuiState:
     ai_models: list[InstalledModel] = field(default_factory=list)
     ai_selected: int = 0
     ai_response: str | None = None
+    context_selection: object | None = None
 
 
 def safe_terminal_text(value: object, limit: int = 4_000) -> str:
@@ -175,6 +178,20 @@ class NeonMinimalTui:
             )
         if self.state.screen == "ai":
             return self._ai_content(content)
+        if self.state.screen == "context" and self.state.context_selection:
+            sources = (
+                "\n".join(
+                    f"- {safe_terminal_text(item.path, 120)} ({item.score})"
+                    for item in self.state.context_selection.selections
+                )
+                or "No relevant safe files selected."
+            )
+            return Text(
+                f"{content}\n\nSelected files:\n{sources}\n\n"
+                "Use `zeroagent context ask ... --allow-context` to explicitly read "
+                "and send excerpts.",
+                style=TEXT,
+            )
         return Text(content + "\n\nPress b or Esc to return home.", style=TEXT)
 
     def _history_content(self, message: str) -> object:
@@ -287,6 +304,8 @@ class NeonMinimalTui:
             return self.analyze()
         if name in {"/run", "/verify"} and argument:
             return self._run_task(argument, verify=name == "/verify")
+        if name == "/context" and argument:
+            return self.context_preview(argument)
         if self.state.screen == "ai" and name == "/back":
             self.state.screen = "home"
             return True
@@ -315,6 +334,7 @@ class NeonMinimalTui:
     def activate(self) -> bool:
         return (
             self.analyze,
+            self.context_preview,
             self.run,
             self.verify,
             self.show_history,
@@ -333,6 +353,22 @@ class NeonMinimalTui:
         except WorkspaceError as error:
             self.state.screen = "error"
             self.state.message = f"Analysis failed: {error}"
+        return True
+
+    def context_preview(self, question: str = "Explain this repository") -> bool:
+        try:
+            self.state.context_selection = select_context(
+                self.state.workspace, question
+            )
+            self.state.screen = "context"
+            self.state.message = (
+                "Metadata-only context preview. No source content was read or sent."
+            )
+        except (WorkspaceError, ContextError) as error:
+            self.state.screen = "error"
+            self.state.message = (
+                f"Context preview failed: {safe_terminal_text(error, 160)}"
+            )
         return True
 
     def run(self) -> bool:

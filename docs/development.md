@@ -28,6 +28,7 @@ zeroagent run "Analyze this repository" --workspace . --verify --format json
 zeroagent run "Analyze this repository" --workspace . --verify --record
 zeroagent history
 zeroagent ai --help
+zeroagent context preview "Explain this project" --workspace .
 zeroagent tui --workspace .
 zeroagent
 

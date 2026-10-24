@@ -18,6 +18,13 @@ from zeroagent.blackbox.recorder import Recorder
 from zeroagent.blackbox.replay import replay as replay_record
 from zeroagent.blackbox.storage import LocalStorage, StorageError
 from zeroagent.config import load_settings
+from zeroagent.context import (
+    ContextError,
+    build_context,
+    context_prompt,
+    inspect_workspace,
+    select_context,
+)
 from zeroagent.core.diagnostics import collect_diagnostics
 from zeroagent.core.discovery import DiscoveryLimits
 from zeroagent.core.repository import AnalysisReport, analyze_repository
@@ -40,6 +47,13 @@ ai_app = typer.Typer(
     add_completion=False,
 )
 app.add_typer(ai_app)
+context_app = typer.Typer(
+    name="context",
+    help="Read-only authorized repository context for local AI questions.",
+    no_args_is_help=True,
+    add_completion=False,
+)
+app.add_typer(context_app)
 console = Console()
 
 
@@ -106,6 +120,115 @@ def tui(
 def _ai_service() -> LocalAIService:
     """Dedicated AI commands explicitly authorize validated loopback communication."""
     return LocalAIService(load_settings())
+
+
+def _render_context(report) -> None:
+    table = Table(title="Repository context selection")
+    table.add_column("Path")
+    table.add_column("Score", justify="right")
+    table.add_column("Reasons")
+    for selection in report.selections:
+        table.add_row(
+            selection.path, str(selection.score), ", ".join(selection.reasons)
+        )
+    console.print(table)
+    console.print(f"Sources read: {len(report.sources)} · Bytes: {report.total_bytes}")
+    if report.exclusions:
+        console.print(f"[yellow]Exclusions/warnings:[/yellow] {len(report.exclusions)}")
+
+
+@context_app.command("inspect")
+def context_inspect(
+    workspace: Annotated[
+        Path, typer.Option("--workspace", help="Repository workspace.")
+    ],
+    output_format: Annotated[str, typer.Option("--format")] = "text",
+) -> None:
+    """Show safe context candidates without reading source content."""
+    try:
+        report = inspect_workspace(workspace)
+    except WorkspaceError as error:
+        typer.echo(f"Context inspect failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    if output_format == "json":
+        typer.echo(report.model_dump_json(indent=2))
+    else:
+        _render_context(report)
+
+
+@context_app.command("preview")
+def context_preview(
+    question: Annotated[
+        str, typer.Argument(help="Repository question for deterministic selection.")
+    ],
+    workspace: Annotated[
+        Path, typer.Option("--workspace", help="Repository workspace.")
+    ],
+    output_format: Annotated[str, typer.Option("--format")] = "text",
+) -> None:
+    """Preview selected paths and reasons without reading source content."""
+    try:
+        report = select_context(workspace, question)
+    except (WorkspaceError, ContextError) as error:
+        typer.echo(f"Context preview failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    if output_format == "json":
+        typer.echo(report.model_dump_json(indent=2))
+    else:
+        _render_context(report)
+
+
+@context_app.command("ask")
+def context_ask(
+    question: Annotated[
+        str, typer.Argument(help="Question about authorized repository context.")
+    ],
+    workspace: Annotated[
+        Path, typer.Option("--workspace", help="Repository workspace.")
+    ],
+    model: Annotated[
+        str, typer.Option("--model", help="Installed local Ollama model.")
+    ],
+    allow_context: Annotated[
+        bool,
+        typer.Option(
+            "--allow-context",
+            help="Authorize reading and sending bounded source excerpts.",
+        ),
+    ] = False,
+    output_format: Annotated[str, typer.Option("--format")] = "text",
+) -> None:
+    """Ask selected local model about authorized bounded repository context."""
+    try:
+        report = build_context(workspace, question, allow_context=allow_context)
+        if not report.sources:
+            raise ContextError("No safe relevant source excerpts available")
+        response = _ai_service().ask(context_prompt(report), model)
+    except (WorkspaceError, ContextError, ProviderError, ValueError) as error:
+        typer.echo(f"Context ask failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    references = [
+        f"{source.path}:{source.start_line}-{source.end_line}"
+        for source in report.sources
+    ]
+    if output_format == "json":
+        import json
+
+        typer.echo(
+            json.dumps(
+                {
+                    "answer": response.response,
+                    "sources": references,
+                    "context": report.model_dump(),
+                },
+                indent=2,
+            )
+        )
+    else:
+        console.print(response.response)
+        console.print("[bold cyan]Sources supplied:[/bold cyan]")
+        for reference in references:
+            console.print(f"- {reference}")
 
 
 @ai_app.command("doctor")

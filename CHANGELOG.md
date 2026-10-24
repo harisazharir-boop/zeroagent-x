@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.9.0.dev0 - 2026-10-24
+
+- Added read-only Agent Workspace & Context Engine with deterministic selection,
+  bounded source excerpts, hashes, sensitive-file exclusions, and explicit consent.
+- Added `zeroagent context` inspect, preview, and authorized local AI ask commands.
+
 ## 0.8.0.dev0 - 2026-10-24
 
 - Hardened BlackBox oversized-record loading, model identifier validation, and

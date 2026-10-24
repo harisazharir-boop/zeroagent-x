@@ -94,6 +94,16 @@ bounded before Rich rendering. BlackBox rejects oversized records before JSON re
 These measures reduce terminal-output and resource-exhaustion risk but do not
 provide a terminal sandbox or cryptographic record integrity.
 
+## Workspace context boundary
+
+Repository discovery and repository content reads are separate. `context inspect`
+and `context preview` do not read source text. `context ask` requires
+`--allow-context` before bounded selected excerpts go to explicitly selected local
+Ollama model. Sensitive filenames, symlinks, binaries, and unsupported file types
+are hard excluded. No user path bypasses these exclusions. Context excerpts are
+untrusted data; prompt framing reduces but cannot eliminate model prompt-injection
+risk. Hashes prove supplied bytes, not AI interpretation correctness.
+
 ## Security requirements for future features
 
 - Destructive actions require explicit user authorization.

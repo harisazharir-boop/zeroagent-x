@@ -33,7 +33,7 @@ def test_keyboard_navigation_numeric_and_invalid_input() -> None:
     assert interface.state.selected == 0
     interface.handle("up")
     assert interface.state.selected == len(MENU) - 1
-    interface.handle("7")
+    interface.handle("8")
     assert interface.state.screen == "settings"
     interface.handle("nonsense")
     assert "Invalid input" in interface.state.message
@@ -48,6 +48,8 @@ def test_escape_returns_home_and_slash_task_argument(tmp_path: Path) -> None:
     assert interface.state.screen == "home"
     interface.handle("/analyze " + str(tmp_path))
     assert interface.state.screen == "analysis"
+    interface.handle("/context auth")
+    assert interface.state.screen == "context"
 
 
 def test_slash_commands_and_screen_transitions(tmp_path: Path) -> None:

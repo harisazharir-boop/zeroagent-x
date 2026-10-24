@@ -7,8 +7,10 @@ from typing import Any
 
 from zeroagent.ai.models import GenerationResponse
 from zeroagent.config import Settings, load_settings
+from zeroagent.context import ContextReport
 from zeroagent.core.repository import AnalysisReport
 from zeroagent.proof.checks.ai import verify_ai_response
+from zeroagent.proof.checks.context import verify_context
 from zeroagent.proof.checks.repository import verify_repository_report
 from zeroagent.proof.checks.routing import verify_routing
 from zeroagent.proof.models import CheckResult, ProofReport, aggregate_status
@@ -39,6 +41,11 @@ def default_verification_registry() -> VerificationRegistry:
                 frozenset({"ai_response"}),
                 verify_ai_response,
             ),
+            VerificationCheck(
+                "context.report",
+                frozenset({"context_report"}),
+                verify_context,
+            ),
         ]
     )
 
@@ -62,6 +69,8 @@ def verify_execution(
         artifact_type = "repository_report"
     elif isinstance(result, GenerationResponse):
         artifact_type = "ai_response"
+    elif isinstance(result, ContextReport):
+        artifact_type = "context_report"
     checks: list[CheckResult] = []
     for check in default_verification_registry().for_artifact(artifact_type):
         if check.identifier == "routing.decision":
@@ -70,6 +79,8 @@ def verify_execution(
             checks.extend(check.handler(result))
         elif check.identifier == "ai.response":
             checks.extend(check.handler(result, "http://127.0.0.1:11434"))
+        elif check.identifier == "context.report":
+            checks.extend(check.handler(result))
     if artifact_type == "unsupported":
         checks.append(
             CheckResult(

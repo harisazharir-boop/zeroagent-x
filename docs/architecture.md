@@ -18,6 +18,7 @@ Project uses `src/` layout and one small runtime surface:
 - `zeroagent.blackbox`: opt-in sanitized execution history and historical replay.
 - `zeroagent.ai`: explicit optional loopback-only Ollama provider client.
 - `zeroagent.tui`: Rich Neon Minimal TTY controller using existing service APIs.
+- `zeroagent.context`: deterministic, bounded, read-only source selection and context assembly.
 
 Namespace packages under `core`, `routing`, `tools`, `proof`, `history`,
 `tools`, `proof`, `history`, and `providers` reserve clear extension boundaries.
@@ -143,6 +144,24 @@ and bounds untrusted displayed paths, record metadata, model identifiers, and mo
 responses. TUI local AI is repeated single-turn use: prior prompts are not sent.
 History inspection displays stored event metadata; replay calls only existing
 historical record helper and never invokes capability handlers.
+
+## Workspace Context
+
+`zeroagent context inspect` discovers only safe-file metadata. `context preview`
+selects relevant paths using deterministic keyword/path scoring without reading
+source content. `context ask` requires `--allow-context` before it reads selected
+source excerpts or sends them to explicit local Ollama model.
+
+Selection scores exact query/path token overlap, filename matches, manifest names,
+and Markdown relevance, then tie-breaks by repository-relative path. Context has
+defaults of 10 files, 32 KiB per file, 64 KiB total source bytes, and 200 lines
+per excerpt. Sources include relative path, line range, SHA-256, and truncation
+state. `.env*`, private-key names/extensions, credential filenames, binaries,
+symlinks, and unsupported types are excluded.
+
+Repository text is framed as untrusted data in provider prompt. It cannot change
+permissions, tools, endpoint policy, or verification. Valid hashes and references
+prove supplied excerpt structure only; they do not prove model explanation truth.
 
 ## Neon Minimal TUI
 

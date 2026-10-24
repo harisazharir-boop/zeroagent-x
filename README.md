@@ -9,7 +9,7 @@ providers, task routing, tool execution, proof verification, and history.
 
 ## Status
 
-Development stage. Version `0.8.0.dev0` supplies repository intelligence plus
+Development stage. Version `0.9.0.dev0` supplies repository intelligence plus
 packaging, safe typed configuration, diagnostics, tests, and contributor tooling.
 It is not production-ready and does not execute agent tasks.
 
@@ -66,6 +66,9 @@ zeroagent ai doctor
 zeroagent ai models
 zeroagent ai ask "Explain dependency injection" --model <installed-model>
 zeroagent tui --workspace .
+zeroagent context inspect --workspace .
+zeroagent context preview "Explain this project" --workspace .
+zeroagent context ask "Explain authentication" --workspace . --model <installed-model> --allow-context
 python -m zeroagent --help
 ```
 
@@ -98,6 +101,11 @@ invocation displays normal CLI help.
 TUI Local AI uses explicit installed-model selection and repeated single-turn
 prompts. It never sends prior prompts, repository contents, or shell tools. TUI
 history can inspect records and historical replay remains read-only.
+
+Repository-aware AI requires explicit `--allow-context`. Sensitive filenames,
+symlinks, binary data, oversized files, and unsupported types are excluded. Source
+excerpts are bounded, hashed, and cited as supplied evidence; model explanations
+remain unverified interpretations.
 
 ## Development
 

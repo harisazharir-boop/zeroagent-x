@@ -47,3 +47,17 @@ zeroagent ai ask "Explain dependency injection" --model <installed-model>
 
 TUI local AI also requires a reachable manually started Ollama service and an
 installed model. It does not store raw prompts or responses by default.
+
+## Repository context
+
+Repository-aware local AI is explicit and read-only. Preview selected source paths:
+
+```bash
+zeroagent context preview "Explain this project" --workspace .
+```
+
+Authorize bounded source reads and local transfer only when intended:
+
+```bash
+zeroagent context ask "Explain this project" --workspace . --model <installed-model> --allow-context
+```
