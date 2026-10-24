@@ -1,0 +1,44 @@
+__pycache__/
+*.py[cod]
+*.so
+.Python
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+.mypy_cache/
+.idea/
+.vscode/
+.DS_Store
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account.json
+id_rsa
+id_ed25519
+
+# ZEROAGENT X local runtime data
+.blackbox/
+.blackbox-data/
+.zeroagent/
+zeroagent-history/
+
+# Local databases and logs
+*.log
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.bak
