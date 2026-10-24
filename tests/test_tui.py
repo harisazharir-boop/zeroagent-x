@@ -1,10 +1,12 @@
 """Tests for Neon Minimal TUI state, rendering, and real local integration."""
 
+import hashlib
 from io import StringIO
 from pathlib import Path
 
 from rich.console import Console
 
+from zeroagent.editing import FileChange, make_proposal
 from zeroagent.tui import MENU, NeonMinimalTui
 
 
@@ -33,7 +35,7 @@ def test_keyboard_navigation_numeric_and_invalid_input() -> None:
     assert interface.state.selected == 0
     interface.handle("up")
     assert interface.state.selected == len(MENU) - 1
-    interface.handle("8")
+    interface.handle("10")
     assert interface.state.screen == "settings"
     interface.handle("nonsense")
     assert "Invalid input" in interface.state.message
@@ -161,3 +163,35 @@ def test_tui_history_inspection_and_replay_never_runs_handler(monkeypatch) -> No
     interface.handle("enter")
     assert calls == [interface.state.history_records[0]]
     assert "No capability will be executed" in interface.state.message
+
+
+def test_tui_edit_requires_explicit_digest_then_applies(tmp_path: Path) -> None:
+    target = tmp_path / "app.py"
+    target.write_text("old")
+    new = "new"
+    proposal = make_proposal(
+        tmp_path,
+        [
+            FileChange(
+                path="app.py",
+                operation="modify",
+                original_sha256=hashlib.sha256(b"old").hexdigest(),
+                new_content=new,
+                resulting_sha256=hashlib.sha256(new.encode()).hexdigest(),
+            )
+        ],
+        "update",
+    )
+    proposal_file = tmp_path / "proposal.json"
+    proposal_file.write_text(proposal.model_dump_json())
+    interface, _ = _tui(tmp_path)
+    interface.handle("4")
+    assert interface.state.screen == "edit"
+    interface.handle(f"/edit-load {proposal_file}")
+    interface.handle("/edit-preview")
+    assert "-old" in interface.state.message and target.read_text() == "old"
+    interface.handle("/edit-apply")
+    assert target.read_text() == "old"
+    interface.handle(f"/edit-approve {proposal.digest}")
+    interface.handle("/edit-apply")
+    assert target.read_text() == "new"

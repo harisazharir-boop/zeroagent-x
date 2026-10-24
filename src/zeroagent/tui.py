@@ -29,6 +29,18 @@ from zeroagent.context import (
     select_context,
 )
 from zeroagent.core.repository import AnalysisReport, analyze_repository
+from zeroagent.editing import (
+    EditError,
+    PatchProposal,
+    approve,
+    load_proposal,
+)
+from zeroagent.editing import (
+    apply as apply_patch,
+)
+from zeroagent.editing import (
+    preview as preview_patch,
+)
 from zeroagent.proof.engine import verify_execution
 from zeroagent.routing.router import RoutingError, run_task
 from zeroagent.security.workspace import WorkspaceError
@@ -43,6 +55,8 @@ CONTROL_CHARACTERS = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
 MENU = (
     "Analyze Repository",
     "Ask About Repository",
+    "Plan Agent Task",
+    "Safe Code Editing",
     "Run Local Agent",
     "Verify Execution",
     "Execution History",
@@ -67,6 +81,8 @@ class TuiState:
     context_selection: object | None = None
     plan: object | None = None
     context_report: object | None = None
+    edit_proposal: PatchProposal | None = None
+    edit_approved: bool = False
 
 
 def safe_terminal_text(value: object, limit: int = 4_000) -> str:
@@ -199,6 +215,17 @@ class NeonMinimalTui:
                 "and send excerpts.",
                 style=TEXT,
             )
+        if self.state.screen == "edit":
+            digest = (
+                self.state.edit_proposal.digest if self.state.edit_proposal else "none"
+            )
+            return Text(
+                f"{content}\n\nProposal digest: {safe_terminal_text(digest, 64)}\n"
+                "Commands: /edit-load FILE /edit-preview /edit-approve DIGEST "
+                "/edit-apply /back\n"
+                "No tests have run. Navigation never applies edits.",
+                style=TEXT,
+            )
         return Text(content + "\n\nPress b or Esc to return home.", style=TEXT)
 
     def _history_content(self, message: str) -> object:
@@ -324,6 +351,14 @@ class NeonMinimalTui:
             return True
         if self.state.screen == "ai" and name == "/model":
             return self.next_model()
+        if self.state.screen == "edit" and name == "/edit-load" and argument:
+            return self.edit_load(Path(argument))
+        if self.state.screen == "edit" and name == "/edit-preview":
+            return self.edit_preview()
+        if self.state.screen == "edit" and name == "/edit-approve" and argument:
+            return self.edit_approve(argument)
+        if self.state.screen == "edit" and name == "/edit-apply":
+            return self.edit_apply()
         commands: dict[str, Callable[[], bool]] = {
             "/analyze": self.analyze,
             "/run": self.run,
@@ -344,6 +379,8 @@ class NeonMinimalTui:
         return (
             self.analyze,
             self.context_preview,
+            self.plan_task,
+            self.edit_screen,
             self.run,
             self.verify,
             self.show_history,
@@ -378,6 +415,88 @@ class NeonMinimalTui:
             self.state.message = (
                 f"Context preview failed: {safe_terminal_text(error, 160)}"
             )
+        return True
+
+    def plan_task(self, task: str = "Explain this repository") -> bool:
+        from zeroagent.planning import create_plan, validate_plan
+
+        self.state.screen = "plan"
+        try:
+            plan = validate_plan(create_plan(task, self.state.workspace))
+            self.state.message = "Planning only.\n" + "\n".join(
+                f"{step.tool}: {step.availability} ({', '.join(step.permissions)})"
+                for step in plan.steps
+            )
+        except Exception as error:
+            self.state.message = f"Plan failed: {safe_terminal_text(error, 160)}"
+        return True
+
+    def edit_screen(self) -> bool:
+        self.state.screen = "edit"
+        self.state.message = (
+            "Load a structured proposal. No files are changed until exact approval "
+            "and /edit-apply."
+        )
+        return True
+
+    def edit_load(self, proposal_file: Path) -> bool:
+        try:
+            self.state.edit_proposal = load_proposal(proposal_file)
+            self.state.edit_approved = False
+            target_count = len(self.state.edit_proposal.changes)
+            self.state.message = (
+                f"Proposal loaded. Target count: {target_count}. "
+                "Preview before approval."
+            )
+        except EditError as error:
+            self.state.message = (
+                f"Proposal load failed: {safe_terminal_text(error, 160)}"
+            )
+        return True
+
+    def edit_preview(self) -> bool:
+        if not self.state.edit_proposal:
+            self.state.message = "No proposal loaded."
+            return True
+        try:
+            self.state.message = safe_terminal_text(
+                preview_patch(self.state.edit_proposal, self.state.workspace), 4_000
+            )
+        except EditError as error:
+            self.state.message = f"Preview failed: {safe_terminal_text(error, 160)}"
+        return True
+
+    def edit_approve(self, digest: str) -> bool:
+        if not self.state.edit_proposal or digest != self.state.edit_proposal.digest:
+            self.state.message = "Approval rejected: exact proposal digest required."
+            return True
+        self.state.edit_approved = True
+        self.state.message = (
+            "Exact proposal approved. Use /edit-apply to write approved bytes."
+        )
+        return True
+
+    def edit_apply(self) -> bool:
+        if not self.state.edit_proposal or not self.state.edit_approved:
+            self.state.message = (
+                "Application blocked: explicit exact-digest approval required."
+            )
+            return True
+        try:
+            approval = approve(self.state.edit_proposal, self.state.workspace)
+            recovery = (
+                self.state.workspace.parent
+                / f"zeroagent-recovery-{self.state.edit_proposal.proposal_id}"
+            )
+            result = apply_patch(
+                self.state.edit_proposal, approval, self.state.workspace, recovery
+            )
+            self.state.message = (
+                f"{result.structural_status}. Recovery: "
+                f"{safe_terminal_text(recovery, 160)}"
+            )
+        except (EditError, WorkspaceError) as error:
+            self.state.message = f"Application failed: {safe_terminal_text(error, 160)}"
         return True
 
     def context_ask(self, question: str) -> bool:

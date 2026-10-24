@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.11.0.dev0 - 2026-10-24
+
+- Added controlled structured text patch validation, preview, approval, apply, and recovery.
+- Added stale-hash detection and controlled patch/apply registry availability.
+
 ## 0.10.0.dev0 - 2026-10-24
 
 - Added deterministic planning-only Tool Registry, plan validator, and `plan` CLI.

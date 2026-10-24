@@ -174,6 +174,15 @@ tools, permission changes, missing or cyclic dependencies, execution claims, and
 unsafe/oversized plan files. Future code-write and process-execute tools are
 descriptors only, with no handlers.
 
+## Safe Editing
+
+`edit validate` and `edit preview` are read-only. Structured proposals support
+text `modify` and `create` with original/result SHA-256 hashes and canonical
+proposal digest. `edit apply` requires exact digest approval, rechecks containment
+and stale hashes, and uses per-file temporary replacement. Multi-file application
+is not atomic. Explicit `edit recover` restores only files still matching applied
+hash; recovery directory stays outside workspace.
+
 ## Neon Minimal TUI
 
 In interactive terminals, bare `zeroagent` starts Neon Minimal dashboard. In

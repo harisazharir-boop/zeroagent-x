@@ -149,19 +149,19 @@ def default_registry() -> ToolRegistry:
             ToolDescriptor(
                 identifier="code.patch",
                 name="Propose Patch",
-                description="Future code patch capability.",
+                description="Validate structured text-only patch proposal.",
                 permissions=["code_write"],
                 side_effects="workspace_write",
-                implementation_status=future,
+                implementation_status=implemented,
                 requires_approval=True,
             ),
             ToolDescriptor(
                 identifier="code.apply",
                 name="Apply Changes",
-                description="Future approved change application.",
+                description="Apply exact approved text-only patch.",
                 permissions=["code_write"],
                 side_effects="workspace_write",
-                implementation_status=future,
+                implementation_status=implemented,
                 requires_approval=True,
             ),
             ToolDescriptor(

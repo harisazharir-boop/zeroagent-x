@@ -9,8 +9,10 @@ from zeroagent.ai.models import GenerationResponse
 from zeroagent.config import Settings, load_settings
 from zeroagent.context import ContextReport
 from zeroagent.core.repository import AnalysisReport
+from zeroagent.editing import PatchEvidence
 from zeroagent.proof.checks.ai import verify_ai_response
 from zeroagent.proof.checks.context import verify_context
+from zeroagent.proof.checks.patch import verify_patch
 from zeroagent.proof.checks.repository import verify_repository_report
 from zeroagent.proof.checks.routing import verify_routing
 from zeroagent.proof.models import CheckResult, ProofReport, aggregate_status
@@ -46,6 +48,9 @@ def default_verification_registry() -> VerificationRegistry:
                 frozenset({"context_report"}),
                 verify_context,
             ),
+            VerificationCheck(
+                "patch.evidence", frozenset({"patch_evidence"}), verify_patch
+            ),
         ]
     )
 
@@ -71,6 +76,8 @@ def verify_execution(
         artifact_type = "ai_response"
     elif isinstance(result, ContextReport):
         artifact_type = "context_report"
+    elif isinstance(result, PatchEvidence):
+        artifact_type = "patch_evidence"
     checks: list[CheckResult] = []
     for check in default_verification_registry().for_artifact(artifact_type):
         if check.identifier == "routing.decision":
@@ -80,6 +87,8 @@ def verify_execution(
         elif check.identifier == "ai.response":
             checks.extend(check.handler(result, "http://127.0.0.1:11434"))
         elif check.identifier == "context.report":
+            checks.extend(check.handler(result))
+        elif check.identifier == "patch.evidence":
             checks.extend(check.handler(result))
     if artifact_type == "unsupported":
         checks.append(

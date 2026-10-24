@@ -29,6 +29,7 @@ class ExecutionEvent(BlackBoxModel):
         "verification_completed",
         "execution_failed",
         "execution_finished",
+        "edit_application",
     ]
     timestamp: datetime
     details: dict[str, object] = {}

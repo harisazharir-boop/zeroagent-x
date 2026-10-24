@@ -9,7 +9,7 @@ providers, task routing, tool execution, proof verification, and history.
 
 ## Status
 
-Development stage. Version `0.10.0.dev0` supplies repository intelligence plus
+Development stage. Version `0.11.0.dev0` supplies repository intelligence plus
 packaging, safe typed configuration, diagnostics, tests, and contributor tooling.
 It is not production-ready and does not execute agent tasks.
 
@@ -71,6 +71,7 @@ zeroagent context preview "Explain this project" --workspace .
 zeroagent context ask "Explain authentication" --workspace . --model <installed-model> --allow-context
 zeroagent plan tools
 zeroagent plan create "Find and fix the authentication bug" --workspace .
+zeroagent edit --help
 python -m zeroagent --help
 ```
 
@@ -112,6 +113,10 @@ remain unverified interpretations.
 Plans are deterministic and planning-only. They declare tools, dependencies,
 permissions, and unsupported future work. They never execute handlers, edit files,
 run tests, or grant authorization.
+
+Safe editing accepts structured text-only proposals. Validate and preview are
+read-only. Apply needs exact proposal-digest approval, detects stale hashes, and
+stores explicit recovery data outside workspace. No shell commands or tests run.
 
 ## Development
 

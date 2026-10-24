@@ -30,6 +30,7 @@ zeroagent history
 zeroagent ai --help
 zeroagent context preview "Explain this project" --workspace .
 zeroagent plan create "Explain this project" --workspace .
+zeroagent edit --help
 zeroagent tui --workspace .
 zeroagent
 

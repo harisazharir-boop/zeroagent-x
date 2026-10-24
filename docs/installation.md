@@ -70,3 +70,8 @@ Create read-only plans without running anything:
 zeroagent plan tools
 zeroagent plan create "Find and fix a bug" --workspace .
 ```
+
+## Controlled edits
+
+Use trusted structured proposals with `zeroagent edit validate`, `preview`, and
+exact-digest `apply`. This feature never invokes shell commands or test runners.

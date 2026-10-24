@@ -17,7 +17,7 @@ from zeroagent.planning import (
 def test_registry_future_tools_remain_nonimplemented() -> None:
     registry = default_registry()
     assert registry.get("repository.analyze").implementation_status == "IMPLEMENTED"
-    assert registry.get("code.apply").implementation_status == "NOT_IMPLEMENTED"
+    assert registry.get("code.apply").implementation_status == "IMPLEMENTED"
     with pytest.raises(PlanError, match="Unknown"):
         registry.get("shell.execute")
 

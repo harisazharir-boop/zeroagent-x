@@ -29,6 +29,22 @@ from zeroagent.context import (
 from zeroagent.core.diagnostics import collect_diagnostics
 from zeroagent.core.discovery import DiscoveryLimits
 from zeroagent.core.repository import AnalysisReport, analyze_repository
+from zeroagent.editing import (
+    EditError,
+    PatchEvidence,
+    PatchProposal,
+    approve,
+    load_proposal,
+    parse_ai_proposal,
+    recover,
+    validate_proposal,
+)
+from zeroagent.editing import (
+    apply as apply_patch,
+)
+from zeroagent.editing import (
+    preview as preview_patch,
+)
 from zeroagent.planning import (
     PlanError,
     create_plan,
@@ -71,6 +87,13 @@ plan_app = typer.Typer(
     add_completion=False,
 )
 app.add_typer(plan_app)
+edit_app = typer.Typer(
+    name="edit",
+    help="Explicit approval-bound safe code editing.",
+    no_args_is_help=True,
+    add_completion=False,
+)
+app.add_typer(edit_app)
 console = Console()
 
 
@@ -167,6 +190,169 @@ def _render_plan(plan) -> None:
         )
     console.print(table)
     console.print("[yellow]Planning only. No tools were executed.[/yellow]")
+
+
+def _load_proposal(path: Path) -> PatchProposal:
+    return load_proposal(path)
+
+
+@edit_app.command("validate")
+def edit_validate(
+    proposal_file: Annotated[Path, typer.Argument()],
+    workspace: Annotated[Path, typer.Option("--workspace")],
+) -> None:
+    """Validate structured patch proposal without modifying files."""
+    try:
+        proposal = validate_proposal(_load_proposal(proposal_file), workspace)
+    except (EditError, WorkspaceError) as error:
+        typer.echo(f"Edit validation failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    console.print(
+        f"[green]Valid proposal {proposal.digest}. No files modified.[/green]"
+    )
+
+
+@edit_app.command("propose")
+def edit_propose(
+    task: Annotated[str, typer.Argument()],
+    workspace: Annotated[Path, typer.Option("--workspace")],
+    model: Annotated[str, typer.Option("--model")],
+    allow_context: Annotated[bool, typer.Option("--allow-context")] = False,
+) -> None:
+    """Request untrusted structured patch JSON from local model; never write."""
+    try:
+        report = build_context(workspace, task, allow_context=allow_context)
+        if not report.sources:
+            raise ContextError("No safe relevant source excerpts available")
+        prompt = (
+            context_prompt(report) + "\nReturn JSON with changes and explanation only."
+        )
+        proposal = parse_ai_proposal(
+            _ai_service().ask(prompt, model).response, workspace
+        )
+    except (
+        ContextError,
+        EditError,
+        ProviderError,
+        ValueError,
+        WorkspaceError,
+    ) as error:
+        typer.echo(f"Edit propose failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(proposal.model_dump_json(indent=2))
+    console.print("[yellow]Proposal created. No repository files modified.[/yellow]")
+
+
+@edit_app.command("preview")
+def edit_preview(
+    proposal_file: Annotated[Path, typer.Argument()],
+    workspace: Annotated[Path, typer.Option("--workspace")],
+) -> None:
+    """Show validated patch content metadata without modifying files."""
+    try:
+        proposal = validate_proposal(_load_proposal(proposal_file), workspace)
+    except (EditError, WorkspaceError) as error:
+        typer.echo(f"Edit preview failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    console.print(f"Proposal digest: [cyan]{proposal.digest}[/cyan]")
+    for change in proposal.changes:
+        console.print(f"[cyan]{change.operation}[/cyan] {change.path}")
+        console.print(f"Original: {change.original_sha256 or '<new file>'}")
+        console.print(f"Result: {change.resulting_sha256}")
+    console.print(preview_patch(proposal, workspace), markup=False, highlight=False)
+    console.print("[yellow]No tests ran. Preview does not modify files.[/yellow]")
+
+
+@edit_app.command("apply")
+def edit_apply(
+    proposal_file: Annotated[Path, typer.Argument()],
+    workspace: Annotated[Path, typer.Option("--workspace")],
+    approve_digest: Annotated[
+        str,
+        typer.Option(
+            "--approve-digest", help="Exact proposal digest shown by preview."
+        ),
+    ],
+    recovery_dir: Annotated[Path, typer.Option("--recovery-dir")],
+    record: Annotated[
+        bool, typer.Option("--record", help="Record sanitized edit metadata.")
+    ] = False,
+    storage_dir: Annotated[Path | None, typer.Option("--storage-dir")] = None,
+) -> None:
+    """Apply exact validated proposal only with explicit digest approval."""
+    try:
+        proposal = _load_proposal(proposal_file)
+        approval = approve(proposal, workspace)
+        if approve_digest != approval.proposal_digest:
+            raise EditError("Approval digest does not match proposal")
+        result = apply_patch(proposal, approval, workspace, recovery_dir)
+    except (EditError, WorkspaceError) as error:
+        typer.echo(f"Edit apply failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    evidence = PatchEvidence(
+        proposal_digest=proposal.digest,
+        approval_bound=True,
+        applied_paths=result.applied_paths,
+        recovery_present=True,
+        permissions_preserved=True,
+    )
+    proof = verify_execution(None, evidence, workspace)
+    audit = "not_requested"
+    if record:
+        recorder = Recorder("safe_edit_application")
+        recorder.emit(
+            "edit_application",
+            {
+                "proposal_id": proposal.proposal_id,
+                "proposal_digest": proposal.digest,
+                "operation_count": len(proposal.changes),
+                "approval_status": "approved",
+                "application_status": result.structural_status,
+                "proof_status": proof.overall_status,
+                "recovery_reference": result.recovery_path,
+            },
+        )
+        try:
+            _storage(storage_dir).save(
+                recorder.build(
+                    status="SUCCEEDED",
+                    capability_identifier="code.apply",
+                    task_category="safe_edit",
+                    result_summary={
+                        "proposal_digest": proposal.digest,
+                        "file_count": len(result.applied_paths),
+                    },
+                    proof_summary={"overall_status": proof.overall_status},
+                )
+            )
+            audit = "recorded"
+        except StorageError as error:
+            audit = f"failed: {error}"
+    typer.echo(
+        json.dumps(
+            {
+                "application": result.model_dump(),
+                "proof": proof.model_dump(),
+                "audit": audit,
+            },
+            indent=2,
+        )
+    )
+
+
+@edit_app.command("recover")
+def edit_recover(
+    recovery_dir: Annotated[Path, typer.Argument()],
+    workspace: Annotated[Path, typer.Option("--workspace")],
+) -> None:
+    """Explicitly restore an application only if edited files remain unchanged."""
+    try:
+        typer.echo(
+            json.dumps({"restored_paths": recover(recovery_dir, workspace)}, indent=2)
+        )
+    except (EditError, WorkspaceError) as error:
+        typer.echo(f"Edit recovery failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
 
 
 @plan_app.command("tools")

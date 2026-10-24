@@ -111,6 +111,15 @@ when loaded from disk and are validated against static tool metadata. Model outp
 cannot register tools, alter tool permissions, add shell commands, or execute plan
 steps. Future write and process tools remain explicitly not implemented.
 
+## Controlled editing boundary
+
+Editing supports explicit approved regular-text modification and creation only.
+Absolute/traversal paths, symlinks, Git internals, environments, build folders,
+and sensitive credential filenames are rejected. Apply rechecks source hashes and
+refuses stale proposals. Recovery is explicit, best-effort, and refuses files
+changed after application. Multi-file writes are not transactional; recovery data
+can contain original source bytes and must stay outside workspace.
+
 ## Security requirements for future features
 
 - Destructive actions require explicit user authorization.
