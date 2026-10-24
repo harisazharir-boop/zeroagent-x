@@ -61,3 +61,12 @@ Authorize bounded source reads and local transfer only when intended:
 ```bash
 zeroagent context ask "Explain this project" --workspace . --model <installed-model> --allow-context
 ```
+
+## Planning
+
+Create read-only plans without running anything:
+
+```bash
+zeroagent plan tools
+zeroagent plan create "Find and fix a bug" --workspace .
+```

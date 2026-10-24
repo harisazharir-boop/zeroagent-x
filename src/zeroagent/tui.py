@@ -22,7 +22,12 @@ from zeroagent.blackbox.history import history
 from zeroagent.blackbox.replay import replay
 from zeroagent.blackbox.storage import LocalStorage, StorageError
 from zeroagent.config import load_settings
-from zeroagent.context import ContextError, select_context
+from zeroagent.context import (
+    ContextError,
+    build_context,
+    context_prompt,
+    select_context,
+)
 from zeroagent.core.repository import AnalysisReport, analyze_repository
 from zeroagent.proof.engine import verify_execution
 from zeroagent.routing.router import RoutingError, run_task
@@ -60,6 +65,8 @@ class TuiState:
     ai_selected: int = 0
     ai_response: str | None = None
     context_selection: object | None = None
+    plan: object | None = None
+    context_report: object | None = None
 
 
 def safe_terminal_text(value: object, limit: int = 4_000) -> str:
@@ -306,6 +313,8 @@ class NeonMinimalTui:
             return self._run_task(argument, verify=name == "/verify")
         if name == "/context" and argument:
             return self.context_preview(argument)
+        if self.state.screen == "context" and name == "/allow-context" and argument:
+            return self.context_ask(argument)
         if self.state.screen == "ai" and name == "/back":
             self.state.screen = "home"
             return True
@@ -369,6 +378,35 @@ class NeonMinimalTui:
             self.state.message = (
                 f"Context preview failed: {safe_terminal_text(error, 160)}"
             )
+        return True
+
+    def context_ask(self, question: str) -> bool:
+        """Explicit TUI confirmation path for source read plus local transfer."""
+        if not self.state.ai_models:
+            self.ai_status()
+        if not self.state.ai_models:
+            self.state.message = (
+                "Context AI unavailable: select Local AI after Ollama starts."
+            )
+            return True
+        try:
+            report = build_context(self.state.workspace, question, allow_context=True)
+            if not report.sources:
+                raise ContextError("No safe relevant source excerpts available")
+            model = self.state.ai_models[self.state.ai_selected].identifier
+            response = LocalAIService(load_settings()).ask(
+                context_prompt(report), model
+            )
+            self.state.context_report = report
+            self.state.screen = "context"
+            self.state.message = (
+                f"Context transfer authorized. Model: {safe_terminal_text(model, 64)}. "
+                f"Sources: {len(report.sources)}. Semantic correctness is unverified.\n"
+                f"Response: {safe_terminal_text(response.response, 4_000)}"
+            )
+        except (ContextError, ProviderError, ValueError) as error:
+            self.state.screen = "context"
+            self.state.message = f"Context ask failed: {safe_terminal_text(error, 160)}"
         return True
 
     def run(self) -> bool:

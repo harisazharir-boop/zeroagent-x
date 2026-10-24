@@ -9,7 +9,7 @@ providers, task routing, tool execution, proof verification, and history.
 
 ## Status
 
-Development stage. Version `0.9.0.dev0` supplies repository intelligence plus
+Development stage. Version `0.10.0.dev0` supplies repository intelligence plus
 packaging, safe typed configuration, diagnostics, tests, and contributor tooling.
 It is not production-ready and does not execute agent tasks.
 
@@ -69,6 +69,8 @@ zeroagent tui --workspace .
 zeroagent context inspect --workspace .
 zeroagent context preview "Explain this project" --workspace .
 zeroagent context ask "Explain authentication" --workspace . --model <installed-model> --allow-context
+zeroagent plan tools
+zeroagent plan create "Find and fix the authentication bug" --workspace .
 python -m zeroagent --help
 ```
 
@@ -106,6 +108,10 @@ Repository-aware AI requires explicit `--allow-context`. Sensitive filenames,
 symlinks, binary data, oversized files, and unsupported types are excluded. Source
 excerpts are bounded, hashed, and cited as supplied evidence; model explanations
 remain unverified interpretations.
+
+Plans are deterministic and planning-only. They declare tools, dependencies,
+permissions, and unsupported future work. They never execute handlers, edit files,
+run tests, or grant authorization.
 
 ## Development
 

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.10.0.dev0 - 2026-10-24
+
+- Added deterministic planning-only Tool Registry, plan validator, and `plan` CLI.
+- Added Neon Minimal planning screen and explicit context-aware TUI AI transfer flow.
+
 ## 0.9.0.dev0 - 2026-10-24
 
 - Added read-only Agent Workspace & Context Engine with deterministic selection,

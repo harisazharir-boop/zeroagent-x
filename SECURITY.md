@@ -104,6 +104,13 @@ are hard excluded. No user path bypasses these exclusions. Context excerpts are
 untrusted data; prompt framing reduces but cannot eliminate model prompt-injection
 risk. Hashes prove supplied bytes, not AI interpretation correctness.
 
+## Planning boundary
+
+Planning is not authorization or execution. Plans are untrusted structured data
+when loaded from disk and are validated against static tool metadata. Model output
+cannot register tools, alter tool permissions, add shell commands, or execute plan
+steps. Future write and process tools remain explicitly not implemented.
+
 ## Security requirements for future features
 
 - Destructive actions require explicit user authorization.

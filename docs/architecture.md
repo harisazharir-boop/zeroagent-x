@@ -19,6 +19,7 @@ Project uses `src/` layout and one small runtime surface:
 - `zeroagent.ai`: explicit optional loopback-only Ollama provider client.
 - `zeroagent.tui`: Rich Neon Minimal TTY controller using existing service APIs.
 - `zeroagent.context`: deterministic, bounded, read-only source selection and context assembly.
+- `zeroagent.planning`: static tool catalog, deterministic task planning, and plan validation.
 
 Namespace packages under `core`, `routing`, `tools`, `proof`, `history`,
 `tools`, `proof`, `history`, and `providers` reserve clear extension boundaries.
@@ -162,6 +163,16 @@ symlinks, and unsupported types are excluded.
 Repository text is framed as untrusted data in provider prompt. It cannot change
 permissions, tools, endpoint policy, or verification. Valid hashes and references
 prove supplied excerpt structure only; they do not prove model explanation truth.
+
+## Planning
+
+`zeroagent plan create TASK --workspace PATH` creates an offline deterministic plan.
+Each step states stable tool ID, dependencies, required permissions, and truthful
+availability. `IMPLEMENTED`, `REQUIRES_AUTHORIZATION`, and `NOT_IMPLEMENTED` are
+distinct. Plans never invoke tools or grant permissions. Validator rejects unknown
+tools, permission changes, missing or cyclic dependencies, execution claims, and
+unsafe/oversized plan files. Future code-write and process-execute tools are
+descriptors only, with no handlers.
 
 ## Neon Minimal TUI
 

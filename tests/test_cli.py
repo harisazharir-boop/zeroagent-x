@@ -29,6 +29,23 @@ def test_bare_cli_in_noninteractive_mode_shows_help() -> None:
     assert "tui" in result.output
 
 
+def test_plan_cli_json_is_planning_only(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "plan",
+            "create",
+            "Explain architecture",
+            "--workspace",
+            str(tmp_path),
+            "--format",
+            "json",
+        ],
+    )
+    assert result.exit_code == 0
+    assert json.loads(result.output)["execution_performed"] is False
+
+
 def test_version_is_available() -> None:
     result = runner.invoke(app, ["--version"])
 

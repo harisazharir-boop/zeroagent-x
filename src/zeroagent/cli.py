@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from typing import Annotated
@@ -28,6 +29,15 @@ from zeroagent.context import (
 from zeroagent.core.diagnostics import collect_diagnostics
 from zeroagent.core.discovery import DiscoveryLimits
 from zeroagent.core.repository import AnalysisReport, analyze_repository
+from zeroagent.planning import (
+    PlanError,
+    create_plan,
+    load_plan,
+    validate_plan,
+)
+from zeroagent.planning import (
+    default_registry as default_plan_registry,
+)
 from zeroagent.proof.engine import verify_execution
 from zeroagent.proof.models import ProofReport
 from zeroagent.routing.router import RoutingDecision, RoutingError, route_task, run_task
@@ -54,6 +64,13 @@ context_app = typer.Typer(
     add_completion=False,
 )
 app.add_typer(context_app)
+plan_app = typer.Typer(
+    name="plan",
+    help="Planning-only agent task plans.",
+    no_args_is_help=True,
+    add_completion=False,
+)
+app.add_typer(plan_app)
 console = Console()
 
 
@@ -137,6 +154,76 @@ def _render_context(report) -> None:
         console.print(f"[yellow]Exclusions/warnings:[/yellow] {len(report.exclusions)}")
 
 
+def _render_plan(plan) -> None:
+    console.print(f"[bold cyan]TASK PLAN[/bold cyan]\n{plan.task}")
+    table = Table(title=f"Plan status: {plan.status}")
+    table.add_column("Step")
+    table.add_column("Tool")
+    table.add_column("Permissions")
+    table.add_column("Availability")
+    for step in plan.steps:
+        table.add_row(
+            step.description, step.tool, ", ".join(step.permissions), step.availability
+        )
+    console.print(table)
+    console.print("[yellow]Planning only. No tools were executed.[/yellow]")
+
+
+@plan_app.command("tools")
+def plan_tools(
+    output_format: Annotated[str, typer.Option("--format")] = "text",
+) -> None:
+    """List static capability catalog; listing never executes tools."""
+    tools = default_plan_registry().all()
+    if output_format == "json":
+        typer.echo(json.dumps([tool.model_dump() for tool in tools], indent=2))
+        return
+    table = Table(title="Planning tool registry")
+    table.add_column("Tool")
+    table.add_column("Permissions")
+    table.add_column("Status")
+    for tool in tools:
+        table.add_row(
+            tool.identifier, ", ".join(tool.permissions), tool.implementation_status
+        )
+    console.print(table)
+
+
+@plan_app.command("create")
+def plan_create(
+    task: Annotated[str, typer.Argument()],
+    workspace: Annotated[Path, typer.Option("--workspace")],
+    output_format: Annotated[str, typer.Option("--format")] = "text",
+) -> None:
+    """Create and validate deterministic plan without execution."""
+    try:
+        plan = validate_plan(create_plan(task, workspace))
+    except (PlanError, WorkspaceError) as error:
+        typer.echo(f"Plan create failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    if output_format == "json":
+        typer.echo(plan.model_dump_json(indent=2))
+    else:
+        _render_plan(plan)
+
+
+@plan_app.command("validate")
+def plan_validate(
+    plan_file: Annotated[Path, typer.Argument()],
+    output_format: Annotated[str, typer.Option("--format")] = "text",
+) -> None:
+    """Validate untrusted plan JSON against static registry without execution."""
+    try:
+        plan = validate_plan(load_plan(plan_file))
+    except PlanError as error:
+        typer.echo(f"Plan validation failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    if output_format == "json":
+        typer.echo(plan.model_dump_json(indent=2))
+    else:
+        console.print("[green]Plan structurally valid. No tools were executed.[/green]")
+
+
 @context_app.command("inspect")
 def context_inspect(
     workspace: Annotated[
@@ -212,8 +299,6 @@ def context_ask(
         for source in report.sources
     ]
     if output_format == "json":
-        import json
-
         typer.echo(
             json.dumps(
                 {
