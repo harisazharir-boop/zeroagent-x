@@ -79,7 +79,7 @@ MENU_ITEMS = (
     ),
     (
         "Safe Code Editing",
-        "Review changes, unified diffs, exact digest approval & atomic rollback.",
+        "Multi-file edits are not atomic; recovery is explicit and best effort.",
         "APPROVAL REQUIRED",
         "edit",
         "Patch Review Studio",
@@ -1789,7 +1789,7 @@ class EditScreen(FeatureScreen):
     feature_name = "Edit"
     feature_title = "Safe Code Editing"
     feature_description = (
-        "Review changes, unified diffs, exact digest approval & atomic rollback."
+        "Multi-file edits are not atomic; recovery is explicit and best effort."
     )
     pipeline_current = "edit"
     empty_output_text = (

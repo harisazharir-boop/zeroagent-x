@@ -2418,6 +2418,10 @@ async def test_textual_safe_edit_requires_approval(tmp_path: Path) -> None:
         app.open_feature("edit")
         await pilot.pause()
         assert app.screen.__class__.__name__ == "EditScreen"
+        description = str(app.screen.query_one(".page-subtitle", Static).renderable)
+        assert "Multi-file edits are not atomic" in description
+        assert "best effort" in description
+        assert "atomic rollback" not in description
 
         # Initially Apply button is disabled
         btn_apply = app.screen.query_one("#btn-apply", Button)
