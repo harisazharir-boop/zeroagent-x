@@ -3,16 +3,19 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: test (${{ matrix.os }}, ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
@@ -28,3 +31,35 @@ jobs:
       - run: zeroagent --version
       - run: zeroagent doctor
       - run: python -m zeroagent --help
+
+  package:
+    name: package (ubuntu, 3.13)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip build
+      - run: python -m build --wheel --sdist --outdir dist
+      - run: python scripts/verify_package.py dist
+      - name: Clean wheel install and smoke
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/zeroagent-install"
+          "$RUNNER_TEMP/zeroagent-install/bin/python" -m pip install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/zeroagent-install/bin/zeroagent" --help
+          "$RUNNER_TEMP/zeroagent-install/bin/zeroagent" --version
+          "$RUNNER_TEMP/zeroagent-install/bin/zeroagent" doctor
+          mkdir zeroagent-smoke-workspace
+          printf 'pass\n' > zeroagent-smoke-workspace/sample.py
+          "$RUNNER_TEMP/zeroagent-install/bin/zeroagent" analyze zeroagent-smoke-workspace
+          "$RUNNER_TEMP/zeroagent-install/bin/zeroagent" route "Analyze this repository"
+          "$RUNNER_TEMP/zeroagent-install/bin/zeroagent" run "Analyze this repository" --workspace zeroagent-smoke-workspace
+          "$RUNNER_TEMP/zeroagent-install/bin/zeroagent" tui --help
+          "$RUNNER_TEMP/zeroagent-install/bin/python" -c "import importlib.resources as r; from zeroagent.textual_app import ZeroAgentApp; assert r.files('zeroagent').joinpath('assets/logo.png').is_file(); assert ZeroAgentApp().pipeline_engine.state.value == 'OFF'"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zeroagent-distributions
+          path: dist/
