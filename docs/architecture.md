@@ -183,15 +183,49 @@ and stale hashes, and uses per-file temporary replacement. Multi-file applicatio
 is not atomic. Explicit `edit recover` restores only files still matching applied
 hash; recovery directory stays outside workspace.
 
-## Neon Minimal TUI
+## Premium Neon Agent Workspace
 
-In interactive terminals, bare `zeroagent` starts Neon Minimal dashboard. In
-noninteractive environments, bare invocation prints standard help and never waits
-for input. `zeroagent tui --workspace PATH` launches explicitly. Navigation mode
-uses arrows, `j`/`k`, digits, Enter, Escape, and Ctrl+C. Typing `/` enters command
-mode, where slash commands accept text safely without being confused with keys.
-Screens call existing analysis, router, proof, history, replay, and local-AI
-services; no subprocess or synthetic result layer exists.
+In interactive terminals, bare `zeroagent` enters the terminal's alternate screen buffer
+(`\x1b[?1049h`), hiding previous shell output and rendering a full-viewport application
+without polluting the shell scrollback buffer. On exit or cancellation (`q`, `ctrl_c`),
+the original screen is cleanly restored (`\x1b[?1049l`). In noninteractive environments,
+bare invocation prints standard help and never waits for input.
+
+The interface is implemented with Textual. It owns the full viewport, alternate
+screen lifecycle, focus, application screens, scrollable result panels, and
+keyboard navigation. It replaces the former manually redrawn Rich menu loop.
+
+The interface centers around a restored 10-item Main Menu:
+1. Analyze Repository
+2. Ask About Repository (Context Engine)
+3. Plan Agent Task (Planning Engine)
+4. Safe Code Editing
+5. Run Controlled Tests (Allowlisted Pytest)
+6. Verify Execution (ProofEngine)
+7. Execution History (AgentBlackBox)
+8. Historical Replay
+9. Local AI Chat (Dedicated Ollama interface)
+10. Settings
+
+Each item navigates to a dedicated screen with its own layout, state, and clear Esc/Back
+navigation. Branding features the authoritative official PNG logo asset (`assets/logo.png`)
+streamed safely via direct terminal driver file transmission (Kitty `t=f` / iTerm2 inline)
+without loading binary payloads into Textual/Rich widget trees. In standard terminal
+environments lacking graphics protocols, the clean stylized glyph `⨉` renders directly
+beside the wordmark.
+Redundant numeric shortcut bars are omitted from the footer in favor of contextual key guidance
+(`↑↓ Navigate`, `Enter Select`, `/ Commands`, `Esc Back`, `q Exit`). A compact single-line
+`CommandComposer` docks above the footer with rounded cyan focus highlighting.
+
+## Controlled Test Execution
+
+`zeroagent test create` constructs a test specification bounded by runner allowlist
+(`pytest`). `test preview` displays exact command and digest. Execution via `test run`
+strictly mandates matching exact digest approval. Tests are executed via direct
+argument array subprocess invocations (`sys.executable -m pytest`), never via shell string.
+Timeouts and output byte limits prevent deadlocks and uncontrolled log inflation. ProofEngine
+checks execution completion, allowlisting, and exit status, while marking semantic correctness
+incomplete.
 
 ## Intended growth
 

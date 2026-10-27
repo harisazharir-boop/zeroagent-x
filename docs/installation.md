@@ -28,6 +28,7 @@ Windows PowerShell:
 zeroagent --version
 zeroagent doctor
 zeroagent analyze .
+zeroagent tui --help
 ```
 
 Installation does not require API keys, cloud authentication, or paid API
@@ -75,3 +76,30 @@ zeroagent plan create "Find and fix a bug" --workspace .
 
 Use trusted structured proposals with `zeroagent edit validate`, `preview`, and
 exact-digest `apply`. This feature never invokes shell commands or test runners.
+
+## Controlled tests
+
+Create and preview allowlisted test specifications with `zeroagent test create` and
+`zeroagent test preview`, then execute only with exact-digest approval via `zeroagent test run`.
+
+## Textual workspace and Pipeline
+
+Interactive `zeroagent` launches the Textual full-screen application. In a
+noninteractive environment it prints CLI help; `zeroagent tui` rejects
+noninteractive invocation. Use `zeroagent tui --workspace .` to select a workspace.
+
+Home creates non-executing plans. Open **Agent Workspace** through command palette
+or `/agent` for `Task → Route → Run → Verify`. Route selects existing permitted local
+capability without running it. Run is explicit and rechecks current task/workspace.
+Verify uses ProofEngine on actual result evidence; unsupported result types report
+`INCOMPLETE`, not `VERIFIED`. Task text is never interpreted as shell command. Unknown
+tasks remain denied. Ollama is optional; cloud services are not required.
+
+Pipeline is OFF until **Start Pipeline**. Proposal preview is read-only. Approval
+requires exact current digest and does not execute anything. **Apply Approved Edit**
+changes files only after approval. **Run Approved Test** starts only approved,
+allowlisted pytest. Stop waits for active work to settle. Apply failures can leave
+partial changes; automatic rollback is not guaranteed.
+
+Windows instructions are documentation-reviewed only; runtime validation for this
+phase ran on Ubuntu Linux.

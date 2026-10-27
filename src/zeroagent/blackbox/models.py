@@ -30,6 +30,7 @@ class ExecutionEvent(BlackBoxModel):
         "execution_failed",
         "execution_finished",
         "edit_application",
+        "test_execution",
     ]
     timestamp: datetime
     details: dict[str, object] = {}

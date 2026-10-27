@@ -1,17 +1,16 @@
 # ZEROAGENT X
 
-**Local-First. Proof-Driven. Zero Paid API Required.**
+**Don't Just Run AI. Prove It Works.**
 
-ZEROAGENT X is an open-source Python framework for developer-task agents. Its
-default engine runs locally, makes no network requests, enables no paid API
-providers, and records no telemetry. Future releases will add opt-in local model
-providers, task routing, tool execution, proof verification, and history.
+ZEROAGENT X is an open-source, local-first developer workflow tool. It provides
+read-only planning and analysis, explicit controlled edit and test workflows,
+local evidence checks, and a Textual workspace. Defaults disable telemetry,
+cloud providers, paid APIs, and network access.
 
 ## Status
 
-Development stage. Version `0.11.0.dev0` supplies repository intelligence plus
-packaging, safe typed configuration, diagnostics, tests, and contributor tooling.
-It is not production-ready and does not execute agent tasks.
+Development preview. Version `0.12.0.dev0` includes guarded local execution,
+but is not a published release or a guarantee of semantic code correctness.
 
 ## Available now
 
@@ -24,17 +23,26 @@ It is not production-ready and does not execute agent tasks.
 - ProofEngine verification for routing and repository-analysis artifacts.
 - AgentBlackBox opt-in local execution history and historical replay.
 - Optional loopback-only Ollama commands for explicit local text generation.
-- Neon Minimal interactive terminal dashboard via `zeroagent tui`.
+- Simple Graphite Textual workspace (`zeroagent` in an interactive terminal, or
+  `zeroagent tui --workspace .`) with planning and controlled Pipeline workflow.
+- Controlled pytest execution with exact digest approval (`zeroagent test`).
+- Safe code editing with unified diffs and recovery backups (`zeroagent edit`).
 - Safe configuration defaults: no telemetry, network access, paid providers,
   cloud providers, or shell execution.
 - Linux and Windows compatible Python code.
 
-## Planned
+## Pipeline workflow
 
-- Deterministic, authorized tool execution.
-- Future optional local language-model routing.
-- Evidence-based result verification.
-- Reproducible execution history.
+Pipeline is OFF until **Start Pipeline**. It plans and analyzes, then pauses for
+explicit input. Load a proposal JSON and inspect its workspace, ID, digest, and
+exact diff. **Approve Edit** records approval only; **Apply Approved Edit** is a
+separate file-changing action. Create and inspect a controlled test specification
+the same way. **Approve Test** does not run it; **Run Approved Test** starts only
+the allowlisted runner. Stop waits for active Apply or Test work to settle safely.
+
+Reports retain stage evidence and can be `VERIFIED`, `FAILED`, or `INCOMPLETE`.
+Structural verification does not prove resulting code is logically correct. An
+Apply failure may have changed files; automatic rollback is not guaranteed.
 
 ## Installation
 
@@ -72,6 +80,7 @@ zeroagent context ask "Explain authentication" --workspace . --model <installed-
 zeroagent plan tools
 zeroagent plan create "Find and fix the authentication bug" --workspace .
 zeroagent edit --help
+zeroagent test --help
 python -m zeroagent --help
 ```
 
@@ -96,14 +105,14 @@ Local AI is optional. Install Ollama and obtain model manually, then use explici
 fallback, or requires paid APIs. Local models need local hardware and electricity.
 Generated text is untrusted and not semantically verified.
 
-`zeroagent tui` needs interactive stdin/stdout. It uses existing local services;
-recording remains opt-in and normal JSON CLI commands remain machine-readable.
-Run bare `zeroagent` in interactive terminal to launch dashboard; noninteractive
-invocation displays normal CLI help.
+`zeroagent` in an interactive terminal, or `zeroagent tui --workspace .`, enters the full-screen
+Simple Graphite workspace with Home planning, slash-command feature navigation,
+and dedicated feature pages. Noninteractive `zeroagent` displays CLI help; the
+explicit `tui` command rejects noninteractive invocation.
 
-TUI Local AI uses explicit installed-model selection and repeated single-turn
-prompts. It never sends prior prompts, repository contents, or shell tools. TUI
-history can inspect records and historical replay remains read-only.
+Controlled test execution via `zeroagent test` supports an allowlisted pytest runner
+with exact digest approval and process isolation boundaries. Test results are
+structurally verified by ProofEngine while marking semantic correctness as incomplete.
 
 Repository-aware AI requires explicit `--allow-context`. Sensitive filenames,
 symlinks, binary data, oversized files, and unsupported types are excluded. Source
@@ -113,6 +122,17 @@ remain unverified interpretations.
 Plans are deterministic and planning-only. They declare tools, dependencies,
 permissions, and unsupported future work. They never execute handlers, edit files,
 run tests, or grant authorization.
+
+### Agent Workspace
+
+Open **Agent Workspace** from command palette or enter `/agent`. It provides explicit
+`Task → Route → Run → Verify` flow. **Route Task** selects registered local capability
+and applies policy without execution. **Run Agent** is separate explicit action; task
+or workspace changes invalidate prior route. **Verify Results** runs existing
+ProofEngine over actual execution evidence. Arbitrary shell commands and unknown tasks
+cannot bypass policy. Some capability result types have no structural proof checks and
+correctly report `INCOMPLETE`. Pipeline editing and controlled testing remain separate
+exact-approval workflows. Ollama stays optional; no cloud service is required.
 
 Safe editing accepts structured text-only proposals. Validate and preview are
 read-only. Apply needs exact proposal-digest approval, detects stale hashes, and

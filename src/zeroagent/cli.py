@@ -58,7 +58,17 @@ from zeroagent.proof.engine import verify_execution
 from zeroagent.proof.models import ProofReport
 from zeroagent.routing.router import RoutingDecision, RoutingError, route_task, run_task
 from zeroagent.security.workspace import WorkspaceError
-from zeroagent.tui import NeonMinimalTui
+from zeroagent.testing import (
+    ALLOWLISTED_RUNNERS,
+    TestEvidence,
+    TestRunnerError,
+    approve_test,
+    execute_test,
+    load_test_spec,
+    make_test_spec,
+    validate_test_spec,
+)
+from zeroagent.textual_app import ZeroAgentApp
 
 app = typer.Typer(
     name="zeroagent",
@@ -94,6 +104,13 @@ edit_app = typer.Typer(
     add_completion=False,
 )
 app.add_typer(edit_app)
+test_app = typer.Typer(
+    name="test",
+    help="Explicit allowlisted and approval-bound test execution.",
+    no_args_is_help=True,
+    add_completion=False,
+)
+app.add_typer(test_app)
 console = Console()
 
 
@@ -118,7 +135,7 @@ def root(
     """ZEROAGENT X: local-first, proof-driven agent framework."""
     if context.invoked_subcommand is None:
         if sys.stdin.isatty() and sys.stdout.isatty():
-            NeonMinimalTui().run_interactive()
+            ZeroAgentApp().run()
         else:
             typer.echo(context.get_help())
 
@@ -147,14 +164,20 @@ def tui(
         Path | None,
         typer.Option("--workspace", help="Initial workspace for TUI actions."),
     ] = None,
+    debug: Annotated[
+        bool,
+        typer.Option("--debug", help="Enable TUI startup diagnostics."),
+    ] = False,
+    no_logo: Annotated[
+        bool,
+        typer.Option("--no-logo", help="Disable inline graphics logo rendering."),
+    ] = False,
 ) -> None:
-    """Launch interactive Neon Minimal terminal interface."""
-    interface = NeonMinimalTui(workspace=workspace)
-    try:
-        interface.run_interactive()
-    except RuntimeError as error:
-        typer.echo(f"TUI unavailable: {error}", err=True)
-        raise typer.Exit(code=2) from error
+    """Launch full-screen ZEROAGENT X Agent Workspace."""
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        typer.echo("TUI requires an interactive terminal.", err=True)
+        raise typer.Exit(code=2)
+    ZeroAgentApp(workspace=workspace, debug_mode=debug, enable_logo=not no_logo).run()
 
 
 def _ai_service() -> LocalAIService:
@@ -353,6 +376,188 @@ def edit_recover(
     except (EditError, WorkspaceError) as error:
         typer.echo(f"Edit recovery failed: {error}", err=True)
         raise typer.Exit(code=2) from error
+
+
+@test_app.command("runners")
+def test_runners(
+    output_format: Annotated[str, typer.Option("--format")] = "text",
+) -> None:
+    """List strictly allowlisted test runners."""
+    if output_format == "json":
+        typer.echo(json.dumps(list(ALLOWLISTED_RUNNERS), indent=2))
+        return
+    table = Table(title="Allowlisted test runners")
+    table.add_column("Runner")
+    table.add_column("Command Target")
+    for r in ALLOWLISTED_RUNNERS:
+        table.add_row(r, f"{sys.executable} -m {r}")
+    console.print(table)
+
+
+@test_app.command("create")
+def test_create(
+    workspace: Annotated[Path, typer.Option("--workspace")],
+    runner: Annotated[str, typer.Option("--runner")] = "pytest",
+    args: Annotated[
+        str, typer.Option("--args", help="Arguments separated by spaces")
+    ] = "",
+    timeout: Annotated[int, typer.Option("--timeout")] = 30,
+    output_format: Annotated[str, typer.Option("--format")] = "text",
+) -> None:
+    """Create a new test specification without executing."""
+    arg_list = [a for a in args.split(" ") if a]
+    try:
+        spec = make_test_spec(
+            workspace=workspace,
+            runner=runner,
+            arguments=arg_list,
+            timeout_seconds=timeout,
+        )
+    except (TestRunnerError, WorkspaceError) as error:
+        typer.echo(f"Test creation failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+    if output_format == "json":
+        typer.echo(spec.model_dump_json(indent=2))
+    else:
+        console.print(
+            f"[bold cyan]TEST SPECIFICATION CREATED[/bold cyan]: {spec.digest}"
+        )
+        console.print(f"Runner: {spec.runner}")
+        console.print(f"Arguments: {spec.arguments}")
+        console.print(f"Timeout: {spec.timeout_seconds}s")
+        console.print("[yellow]Specification created. No tests were executed.[/yellow]")
+
+
+@test_app.command("validate")
+def test_validate(
+    spec_file: Annotated[Path, typer.Argument()],
+    workspace: Annotated[Path, typer.Option("--workspace")],
+    output_format: Annotated[str, typer.Option("--format")] = "text",
+) -> None:
+    """Validate a test specification against allowlist and workspace rules."""
+    try:
+        spec = load_test_spec(spec_file)
+        validated = validate_test_spec(spec, workspace)
+    except (TestRunnerError, WorkspaceError) as error:
+        typer.echo(f"Test validation failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+    if output_format == "json":
+        typer.echo(validated.model_dump_json(indent=2))
+    else:
+        console.print(
+            f"[green]Valid test specification {validated.digest}. No tests run.[/green]"
+        )
+
+
+@test_app.command("preview")
+def test_preview(
+    spec_file: Annotated[Path, typer.Argument()],
+    workspace: Annotated[Path, typer.Option("--workspace")],
+) -> None:
+    """Preview the exact command and digest that would be run upon approval."""
+    try:
+        spec = load_test_spec(spec_file)
+        validated = validate_test_spec(spec, workspace)
+    except (TestRunnerError, WorkspaceError) as error:
+        typer.echo(f"Test preview failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+    console.print(f"Specification digest: [cyan]{validated.digest}[/cyan]")
+    console.print(
+        f"Runner: {validated.runner} ({sys.executable} -m {validated.runner})"
+    )
+    console.print(f"Arguments: {validated.arguments}")
+    console.print(f"Timeout: {validated.timeout_seconds}s")
+    console.print(
+        "[yellow]Notice: Pytest executes repository code. "
+        "Exact approval required before run.[/yellow]"
+    )
+
+
+@test_app.command("run")
+def test_run(
+    spec_file: Annotated[Path, typer.Argument()],
+    workspace: Annotated[Path, typer.Option("--workspace")],
+    approve_digest: Annotated[
+        str,
+        typer.Option(
+            "--approve-digest", help="Exact specification digest shown by preview."
+        ),
+    ],
+    record: Annotated[
+        bool, typer.Option("--record", help="Record sanitized test audit metadata.")
+    ] = False,
+    storage_dir: Annotated[Path | None, typer.Option("--storage-dir")] = None,
+) -> None:
+    """Execute allowlisted test specification only with exact digest approval."""
+    try:
+        spec = load_test_spec(spec_file)
+        approval = approve_test(spec, workspace)
+        if approve_digest != approval.specification_digest:
+            raise TestRunnerError("Approval digest does not match test specification")
+        result = execute_test(spec, approval, workspace)
+    except (TestRunnerError, WorkspaceError) as error:
+        typer.echo(f"Test run failed: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+    evidence = TestEvidence(
+        specification_digest=spec.digest,
+        approval_bound=True,
+        runner_allowlisted=spec.runner in ALLOWLISTED_RUNNERS,
+        execution_completed=result.status in ("PASSED", "FAILED"),
+        exit_code_zero=result.exit_code == 0,
+        output_integrity=not result.output_truncated,
+    )
+    proof = verify_execution(None, evidence, workspace)
+
+    audit = "not_requested"
+    if record:
+        recorder = Recorder("test_execution")
+        recorder.emit(
+            "test_execution",
+            {
+                "specification_id": spec.specification_id,
+                "specification_digest": spec.digest,
+                "runner": spec.runner,
+                "approval_status": "approved",
+                "execution_status": result.status,
+                "exit_code": result.exit_code,
+                "proof_status": proof.overall_status,
+            },
+        )
+        try:
+            _storage(storage_dir).save(
+                recorder.build(
+                    status="SUCCEEDED" if result.status == "PASSED" else "FAILED",
+                    capability_identifier="tests.execute",
+                    task_category="test_execution",
+                    result_summary={
+                        "specification_digest": spec.digest,
+                        "runner": spec.runner,
+                        "exit_code": result.exit_code,
+                        "duration_seconds": result.duration_seconds,
+                    },
+                    proof_summary={"overall_status": proof.overall_status},
+                )
+            )
+            audit = "recorded"
+        except StorageError as err:
+            audit = f"failed: {err}"
+
+    typer.echo(
+        json.dumps(
+            {
+                "result": result.model_dump(),
+                "proof": proof.model_dump(),
+                "audit": audit,
+            },
+            indent=2,
+        )
+    )
+    if result.status != "PASSED":
+        raise typer.Exit(code=1)
 
 
 @plan_app.command("tools")

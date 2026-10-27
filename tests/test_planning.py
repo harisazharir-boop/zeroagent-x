@@ -27,7 +27,7 @@ def test_planner_is_deterministic_and_never_executes(tmp_path: Path) -> None:
     second = create_plan("Find and fix authentication bug", tmp_path)
     assert first == second
     assert first.execution_performed is False
-    assert first.status == "INCOMPLETE"
+    assert first.status == "REQUIRES_AUTHORIZATION"
     assert any(step.tool == "code.patch" for step in first.steps)
 
 

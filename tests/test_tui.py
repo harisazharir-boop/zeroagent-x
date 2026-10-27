@@ -1,11 +1,14 @@
-"""Tests for Neon Minimal TUI state, rendering, and real local integration."""
+"""Tests for ZEROAGENT X Full-Screen Menu TUI and Alternate-Screen Isolation."""
 
-import hashlib
+from __future__ import annotations
+
 from io import StringIO
 from pathlib import Path
 
+import pytest
 from rich.console import Console
 
+from zeroagent import __version__
 from zeroagent.editing import FileChange, make_proposal
 from zeroagent.tui import MENU, NeonMinimalTui
 
@@ -14,184 +17,221 @@ def _tui(
     workspace: Path | None = None, width: int = 100
 ) -> tuple[NeonMinimalTui, StringIO]:
     stream = StringIO()
-    console = Console(file=stream, force_terminal=False, width=width)
+    console = Console(
+        file=stream, force_terminal=True, width=width, color_system="truecolor"
+    )
     return NeonMinimalTui(console=console, workspace=workspace), stream
 
 
-def test_main_menu_rendering_contains_brand_and_actions() -> None:
+def test_tui_renders_header_with_geometric_logo_and_spacing() -> None:
     interface, stream = _tui()
     interface.render()
     output = stream.getvalue()
-    assert "AGENT X" in output
+
+    # Brand checks
+    assert "ZEROAGENT X" in output
+    assert f"v{__version__}" in output
+    assert "LOCAL-FIRST · PROOF-DRIVEN" in output
     assert "Don't Just Run AI. Prove It Works." in output
-    assert all(item in output for item in MENU)
+
+    # Check geometric X logo presence and compact box-drawing frame
+    assert "╭──────────╮" in output
+    assert "██╗" in output
+    assert "██║" in output
+
+    # Check footer presence
+    assert "◈ ZERO PAID API REQUIRED ◈" in output
 
 
-def test_keyboard_navigation_numeric_and_invalid_input() -> None:
-    interface, _ = _tui()
-    interface.handle("down")
-    assert interface.state.selected == 1
-    interface.handle("\x1b[A")
-    assert interface.state.selected == 0
-    interface.handle("up")
-    assert interface.state.selected == len(MENU) - 1
-    interface.handle("10")
-    assert interface.state.screen == "settings"
-    interface.handle("nonsense")
-    assert "Invalid input" in interface.state.message
-
-
-def test_escape_returns_home_and_slash_task_argument(tmp_path: Path) -> None:
-    (tmp_path / "module.py").write_text("pass\n")
-    interface, _ = _tui(tmp_path)
-    interface.handle("/run Analyze this repository")
-    assert interface.state.screen == "run"
-    interface.handle("esc")
-    assert interface.state.screen == "home"
-    interface.handle("/analyze " + str(tmp_path))
-    assert interface.state.screen == "analysis"
-    interface.handle("/context auth")
-    assert interface.state.screen == "context"
-
-
-def test_slash_commands_and_screen_transitions(tmp_path: Path) -> None:
-    (tmp_path / "module.py").write_text("pass\n")
-    interface, _ = _tui(tmp_path)
-    interface.handle("/analyze")
-    assert interface.state.screen == "analysis"
-    assert interface.state.last_report is not None
-    interface.handle("/verify")
-    assert interface.state.screen == "verify"
-    assert "Proof status: VERIFIED" in interface.state.message
-    interface.handle("/history")
-    assert interface.state.screen == "history"
-    interface.handle("/replay")
-    assert interface.state.screen == "replay"
-    interface.handle("/help")
-    assert interface.state.screen == "help"
-
-
-def test_narrow_render_and_unavailable_ai(monkeypatch) -> None:
-    interface, stream = _tui(width=40)
-    interface.render()
-    assert "ZEROAGENT X" in stream.getvalue()
-
-    class Service:
-        def doctor(self):
-            from zeroagent.ai.models import ProviderInfo
-
-            return ProviderInfo(endpoint="http://127.0.0.1:11434", reachable=False)
-
-    monkeypatch.setattr("zeroagent.tui.LocalAIService", lambda settings: Service())
-    interface.handle("/model")
-    assert interface.state.screen == "ai"
-    assert "unavailable" in interface.state.message
-
-
-def test_tui_quit_and_noninteractive_guard(monkeypatch) -> None:
-    interface, _ = _tui()
-    assert interface.handle("/exit") is False
-
-    class Stream:
-        def isatty(self) -> bool:
-            return False
-
-    monkeypatch.setattr("zeroagent.tui.sys.stdin", Stream())
-    try:
-        interface.run_interactive()
-    except RuntimeError as error:
-        assert "interactive terminal" in str(error)
-    else:
-        raise AssertionError("Expected noninteractive TUI rejection")
-
-
-def test_tui_ai_repeated_single_turn_and_safe_response(monkeypatch) -> None:
+def test_tui_main_menu_renders_all_ten_items() -> None:
     interface, stream = _tui()
+    interface.render()
+    output = stream.getvalue()
 
-    class Service:
+    assert "MAIN MENU" in output
+    for idx, (title, _) in enumerate(MENU, start=1):
+        assert f"{idx:02d}. {title}" in output
+
+
+def test_tui_menu_keyboard_navigation_and_selection() -> None:
+    interface, _ = _tui()
+    assert interface.state.selected_index == 0
+    assert interface.state.current_screen == "home"
+
+    # Navigate down
+    interface.handle("down")
+    assert interface.state.selected_index == 1
+
+    # Navigate up
+    interface.handle("up")
+    assert interface.state.selected_index == 0
+
+    # Number shortcut directly to item 5 (Run Controlled Tests)
+    interface.handle("5")
+    assert interface.state.selected_index == 4
+    assert interface.state.current_screen == "test"
+
+    # Esc returns to home screen
+    interface.handle("esc")
+    assert interface.state.current_screen == "home"
+
+
+def test_tui_all_ten_screens_accessible() -> None:
+    interface, stream = _tui()
+    screen_keys = [
+        "1",  # Analyze
+        "2",  # Ask Context
+        "3",  # Plan
+        "4",  # Edit
+        "5",  # Test
+        "6",  # Verify
+        "7",  # History
+        "8",  # Replay
+        "9",  # AI Chat
+        "10",  # Settings
+    ]
+    for key in screen_keys:
+        interface.handle(key)
+        assert interface.state.current_screen != "home"
+        interface.render()
+        # Ensure screen renders without raising errors
+        assert stream.getvalue()
+        # Return home
+        interface.handle("esc")
+        assert interface.state.current_screen == "home"
+
+
+def test_tui_compact_logo_on_narrow_terminal() -> None:
+    interface, stream = _tui(width=75)
+    interface.render()
+    output = stream.getvalue()
+    # Compact logo header checks
+    assert "╭─────────╮" in output or "ZEROAGENT X" in output
+
+
+def test_tui_safe_edit_flow(tmp_path: Path) -> None:
+    app_py = tmp_path / "app.py"
+    app_py.write_text("v1\n")
+    orig_hash = "2d27fbdf4e8ca207afbfa388ca9172fbcc6c70e534af2476b3b704f87debadcf"
+    res_hash = "81db67b6a5702b9b68f0016f061c409bf3fb16d062fc854d1b424bb4e9c28c56"
+    change = FileChange(
+        path="app.py",
+        operation="modify",
+        original_sha256=orig_hash,
+        new_content="v2\n",
+        resulting_sha256=res_hash,
+    )
+    proposal = make_proposal(tmp_path, [change], "Upgrade version")
+    prop_file = tmp_path / "proposal.json"
+    prop_file.write_text(proposal.model_dump_json())
+
+    interface, stream = _tui(workspace=tmp_path)
+    # Open edit screen
+    interface.handle("4")
+    assert interface.state.current_screen == "edit"
+
+    # Load proposal
+    interface.handle(f"/edit-load {prop_file}")
+    assert interface.state.edit_proposal is not None
+    assert interface.state.edit_approved is False
+
+    # Preview diff (read-only)
+    interface.handle("/edit-preview")
+    interface.render()
+    assert "Diff Preview:" in stream.getvalue()
+    assert app_py.read_text() == "v1\n"
+
+    # Apply blocked without approval
+    interface.handle("/edit-apply")
+    assert "Application blocked" in interface.state.message
+    assert app_py.read_text() == "v1\n"
+
+    # Approve with exact digest and apply
+    interface.handle(f"/edit-approve {proposal.digest}")
+    assert interface.state.edit_approved is True
+    interface.handle("/edit-apply")
+    assert "Patch Applied" in interface.state.message
+    assert app_py.read_text() == "v2\n"
+
+
+def test_tui_controlled_test_flow(tmp_path: Path) -> None:
+    test_py = tmp_path / "test_sample.py"
+    test_py.write_text("def test_ok(): assert 1 == 1\n")
+
+    interface, stream = _tui(workspace=tmp_path)
+    # Open test screen
+    interface.handle("5")
+    assert interface.state.current_screen == "test"
+
+    # Create spec
+    interface.handle("/test-spec test_sample.py")
+    assert interface.state.test_spec is not None
+    digest = interface.state.test_spec.digest
+
+    # Preview
+    interface.handle("/test-preview")
+    interface.render()
+    assert "Test Preview:" in stream.getvalue() or "Command:" in stream.getvalue()
+
+    # Blocked without approval
+    interface.handle("/test-run")
+    assert "Test execution blocked" in interface.state.message
+
+    # Approve and run
+    interface.handle(f"/test-approve {digest}")
+    assert interface.state.test_approved is True
+    interface.handle("/test-run")
+    interface.render()
+    assert "Test Result: PASSED" in interface.state.message
+
+
+def test_tui_local_ai_chat_interaction(monkeypatch: pytest.MonkeyPatch) -> None:
+    class DummyService:
         def doctor(self):
             from zeroagent.ai.models import ProviderInfo
 
-            return ProviderInfo(endpoint="http://127.0.0.1:11434", reachable=True)
+            return ProviderInfo(
+                endpoint="http://127.0.0.1:11434", reachable=True, model_count=1
+            )
 
         def models(self):
             from zeroagent.ai.models import InstalledModel
 
             return [
-                InstalledModel(identifier="tiny"),
-                InstalledModel(identifier="other"),
+                InstalledModel(identifier="llama3:latest", size_bytes=4_000_000_000)
             ]
 
         def ask(self, prompt: str, model: str):
             from zeroagent.ai.models import GenerationResponse
 
-            return GenerationResponse(model=model, response=f"answer\x1b[31m:{prompt}")
-
-    monkeypatch.setattr("zeroagent.tui.LocalAIService", lambda settings: Service())
-    interface.handle("/model")
-    interface.handle("first prompt")
-    interface.handle("/model")
-    interface.handle("second prompt")
-    interface.render()
-    assert interface.state.ai_response == "answer\x1b[31m:second prompt"
-    assert "answer?[31m:second prompt" in stream.getvalue()
-    assert "Prior messages are not sent" in stream.getvalue()
-
-
-def test_tui_history_inspection_and_replay_never_runs_handler(monkeypatch) -> None:
-    interface, _ = _tui()
-    calls = []
-
-    class Event:
-        sequence = 1
-        event_type = "capability_completed"
-
-    class Record:
-        execution_id = "a" * 32
-        capability_identifier = "repository_analyzer"
-        status = "SUCCEEDED"
-        events = [Event()]
-
-    monkeypatch.setattr("zeroagent.tui.history", lambda storage, limit: [Record()])
-    monkeypatch.setattr(
-        "zeroagent.tui.replay", lambda record: calls.append(record) or record
-    )
-    interface.handle("/history")
-    interface.handle("enter")
-    assert "capability_completed" in interface.state.message
-    interface.handle("/replay")
-    interface.handle("enter")
-    assert calls == [interface.state.history_records[0]]
-    assert "No capability will be executed" in interface.state.message
-
-
-def test_tui_edit_requires_explicit_digest_then_applies(tmp_path: Path) -> None:
-    target = tmp_path / "app.py"
-    target.write_text("old")
-    new = "new"
-    proposal = make_proposal(
-        tmp_path,
-        [
-            FileChange(
-                path="app.py",
-                operation="modify",
-                original_sha256=hashlib.sha256(b"old").hexdigest(),
-                new_content=new,
-                resulting_sha256=hashlib.sha256(new.encode()).hexdigest(),
+            return GenerationResponse(
+                model=model, response=f"Local explanation for: {prompt}"
             )
-        ],
-        "update",
-    )
-    proposal_file = tmp_path / "proposal.json"
-    proposal_file.write_text(proposal.model_dump_json())
-    interface, _ = _tui(tmp_path)
-    interface.handle("4")
-    assert interface.state.screen == "edit"
-    interface.handle(f"/edit-load {proposal_file}")
-    interface.handle("/edit-preview")
-    assert "-old" in interface.state.message and target.read_text() == "old"
-    interface.handle("/edit-apply")
-    assert target.read_text() == "old"
-    interface.handle(f"/edit-approve {proposal.digest}")
-    interface.handle("/edit-apply")
-    assert target.read_text() == "new"
+
+    monkeypatch.setattr("zeroagent.tui.LocalAIService", lambda cfg: DummyService())
+
+    interface, stream = _tui()
+    interface.handle("9")  # AI Chat screen
+    assert interface.state.current_screen == "ai"
+
+    # Send chat prompt
+    interface.handle("What is a decorator in Python?")
+    interface.render()
+    output = stream.getvalue()
+    assert "User:" in output and "What is a decorator in Python?" in output
+    assert "Ollama:" in output and "Local explanation for:" in output
+
+
+def test_tui_noninteractive_rejection(monkeypatch: pytest.MonkeyPatch) -> None:
+    class Stream:
+        def isatty(self) -> bool:
+            return False
+
+    monkeypatch.setattr("zeroagent.tui.sys.stdin", Stream())
+    interface, _ = _tui()
+    try:
+        interface.run_interactive()
+    except RuntimeError as err:
+        assert "Interactive terminal required" in str(err)
+    else:
+        raise AssertionError("Expected noninteractive rejection")

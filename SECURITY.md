@@ -9,10 +9,12 @@ evidence. Do not include secrets or private repository content.
 
 ## Current security behavior
 
-This release has no agent executor, tool runner, provider client, network client,
-shell executor, or telemetry client. `zeroagent doctor` reads local runtime data
-only. `zeroagent analyze` reads selected workspace metadata and supported manifest
-text; it does not execute, import, install, or transmit repository content.
+This release has explicit policy-gated local handlers, controlled editing, and
+allowlisted pytest execution. It has no cloud provider, paid-provider fallback,
+arbitrary shell executor, telemetry client, or automatic execution. `zeroagent
+doctor` reads local runtime data only. `zeroagent analyze` reads selected workspace
+metadata and supported manifest text; it does not execute, import, install, or
+transmit repository content.
 
 Typed defaults disable telemetry, network access, cloud providers, paid API
 providers, and shell-command execution. Unknown configuration fields are
@@ -46,6 +48,21 @@ under current user's permissions and inherit Repository Intelligence workspace
 limits. No LLM, cloud provider, network client, or shell executor exists in this
 phase.
 
+## Phase 13F threat matrix
+
+| Threat | Protection | Evidence | Residual risk |
+|---|---|---|---|
+| Arbitrary shell execution | Static handlers; shell policy disabled | `tests/test_router.py`, `tests/test_pipeline.py` | Not OS sandboxing |
+| Workspace traversal / symlink escape | Resolved root; child symlinks skipped | `tests/test_repository.py` | Selected root may be symlink |
+| Stale Agent route | Task/workspace bound route invalidation | `tests/test_textual_app.py` | Filesystem may change after analysis |
+| Approval reuse / cross-run approval | Digest, workspace, run identity, single use | `tests/test_pipeline.py` | User-approved proposal remains untrusted |
+| Duplicate guarded execution | Pipeline worker ownership and Agent running guard | `tests/test_pipeline.py`, `tests/test_textual_app.py` | Sync Agent handlers settle, not force-cancelled |
+| Fabricated proof | ProofEngine checks actual artifact evidence | `tests/test_proof.py` | Structural proof is not semantic correctness |
+| Replay side effects | Replay reads records only | `tests/test_blackbox.py` | Stored records are untrusted |
+| Secret leakage | Best-effort redaction, bounded storage | `tests/test_blackbox.py` | Redaction cannot guarantee all secret forms |
+| Remote AI / cloud fallback | Loopback-only endpoint; cloud disabled | `tests/test_ai.py`, `tests/test_router.py` | Optional local Ollama requires trusted local host |
+| Unsafe shutdown | Agent/Pipeline wait for owned work settlement | `tests/test_textual_app.py`, `tests/test_pipeline.py` | Long synchronous handlers delay exit |
+
 ## ProofEngine boundary
 
 ProofEngine validates consistency of untrusted execution artifacts using fixed,
@@ -78,13 +95,20 @@ history commands never contact Ollama. No cloud, paid-provider, or automatic
 model-download fallback exists. Local model output is untrusted text; ProofEngine
 cannot establish its factual accuracy or safety.
 
-## Neon Minimal TUI boundary
+## Neon Minimal TUI & Alternate-Screen boundary
 
-TUI is a presentation controller over existing service APIs. It does not execute
-shell commands, enable recording, contact Ollama from dashboard status, or change
-policy defaults. Local AI health is checked only when user selects Local AI screen.
-Historical replay screen is informational and directs execution-ID replay to its
-existing read-only command.
+TUI is a presentation controller over existing service APIs that isolates rendering in the
+terminal's alternate screen buffer (`\x1b[?1049h`). It does not execute shell commands,
+enable recording, contact Ollama from dashboard status, or change policy defaults. Local
+AI health is checked only when the user explicitly navigates to the dedicated Local AI screen.
+Controlled testing requires exact specification digest approval before execution, rejecting
+all arbitrary shell commands and unallowlisted runners. Historical replay screen is read-only
+and directs execution-ID replay to its existing read-only command. Terminal settings and cursor
+modes are restored on exit.
+
+The alternate screen prevents ZEROAGENT X frames from being appended to primary-shell
+scrollback. Individual terminal emulators may still provide an emulator-level way to
+inspect primary-screen history; ZEROAGENT X cannot control that implementation detail.
 
 ## Phase 8 hardening boundary
 
@@ -111,6 +135,15 @@ when loaded from disk and are validated against static tool metadata. Model outp
 cannot register tools, alter tool permissions, add shell commands, or execute plan
 steps. Future write and process tools remain explicitly not implemented.
 
+## Pipeline lifecycle boundary
+
+Pipeline is OFF until an explicit Start action. Proposal and test-specification
+approval requires exact current digest and bound workspace; approval is separate
+from execution. Apply and Test run as owned guarded operations. Cancellation and
+normal application shutdown wait for owned operations to settle before terminal
+report, navigation, or exit. This protects normal application-controlled shutdown,
+not SIGKILL, power loss, or forced process termination.
+
 ## Controlled editing boundary
 
 Editing supports explicit approved regular-text modification and creation only.
@@ -119,6 +152,15 @@ and sensitive credential filenames are rejected. Apply rechecks source hashes an
 refuses stale proposals. Recovery is explicit, best-effort, and refuses files
 changed after application. Multi-file writes are not transactional; recovery data
 can contain original source bytes and must stay outside workspace.
+
+## Controlled testing security boundary
+
+Test execution allows ONLY strictly allowlisted test runners (`pytest`) invoked directly
+via array-based argument lists without shell wrappers or command-line string evaluation.
+Exact digest approval is required before running tests. Testing executes code within the
+workspace, meaning repository test suites can potentially perform filesystem and network
+operations; testing is not sandboxed at the OS level and must only be approved in trusted
+workspaces.
 
 ## Security requirements for future features
 

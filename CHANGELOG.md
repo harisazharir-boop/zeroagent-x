@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Added controlled Pipeline lifecycle, exact artifact approval, retained reports,
+  shutdown settlement, and duplicate-action safety coverage.
+- Clarified Pipeline status, approval versus execution, installation, and security
+  documentation. No release has been published.
+
+## 0.12.0.dev0 - 2026-10-24
+
+- Added full-screen alternate-screen buffer isolation for `zeroagent` interactive terminal mode.
+- Restored 10-item menu interface with dedicated feature screens for all capabilities.
+- Added bold, geometric, futuristic X logo branding with cyan/purple geometry and compact header spacing.
+- Moved Local AI Chat to dedicated feature screen 09 with local model selection.
+- Added controlled test execution subsystem (`zeroagent test`) with allowlisted pytest runner.
+- Added exact specification digest binding for test execution.
+- Added ProofEngine structural verification for test execution results.
+- Added opt-in AgentBlackBox metadata recording for test execution.
+- Updated Tool Registry with `tests.execute` as IMPLEMENTED.
+
 ## 0.11.0.dev0 - 2026-10-24
 
 - Added controlled structured text patch validation, preview, approval, apply, and recovery.

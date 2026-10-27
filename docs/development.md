@@ -10,6 +10,8 @@ python -m venv .venv
 python -m pip install -e ".[dev]"
 ```
 
+The development extra includes `pytest-asyncio` for Textual application tests.
+
 On Windows, invoke `.venv\Scripts\python.exe` when `python` is not activated.
 
 ## Checks
@@ -31,10 +33,13 @@ zeroagent ai --help
 zeroagent context preview "Explain this project" --workspace .
 zeroagent plan create "Explain this project" --workspace .
 zeroagent edit --help
+zeroagent test --help
 zeroagent tui --workspace .
 zeroagent
 
-# In the TUI: /model, type a prompt, /clear, /back
+# Textual UI tests require pytest-asyncio, included in the dev extra.
+# In the TUI: arrows/Enter/Escape, /help, /analyze, /plan, /edit-load,
+# /test-spec, /model
 python -m zeroagent --help
 ```
 

@@ -167,10 +167,10 @@ def default_registry() -> ToolRegistry:
             ToolDescriptor(
                 identifier="tests.execute",
                 name="Run Tests",
-                description="Future controlled process execution.",
+                description="Controlled allowlisted test execution.",
                 permissions=["process_execute"],
                 side_effects="process",
-                implementation_status=future,
+                implementation_status=implemented,
                 requires_approval=True,
             ),
             ToolDescriptor(

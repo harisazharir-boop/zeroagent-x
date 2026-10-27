@@ -15,6 +15,7 @@ from zeroagent.proof.checks.context import verify_context
 from zeroagent.proof.checks.patch import verify_patch
 from zeroagent.proof.checks.repository import verify_repository_report
 from zeroagent.proof.checks.routing import verify_routing
+from zeroagent.proof.checks.test_exec import verify_test
 from zeroagent.proof.models import CheckResult, ProofReport, aggregate_status
 from zeroagent.proof.registry import VerificationCheck, VerificationRegistry
 from zeroagent.routing.router import (
@@ -22,6 +23,7 @@ from zeroagent.routing.router import (
     RoutingDecision,
     default_registry,
 )
+from zeroagent.testing import TestEvidence
 
 
 def default_verification_registry() -> VerificationRegistry:
@@ -51,6 +53,9 @@ def default_verification_registry() -> VerificationRegistry:
             VerificationCheck(
                 "patch.evidence", frozenset({"patch_evidence"}), verify_patch
             ),
+            VerificationCheck(
+                "test.evidence", frozenset({"test_evidence"}), verify_test
+            ),
         ]
     )
 
@@ -78,6 +83,8 @@ def verify_execution(
         artifact_type = "context_report"
     elif isinstance(result, PatchEvidence):
         artifact_type = "patch_evidence"
+    elif isinstance(result, TestEvidence):
+        artifact_type = "test_evidence"
     checks: list[CheckResult] = []
     for check in default_verification_registry().for_artifact(artifact_type):
         if check.identifier == "routing.decision":
@@ -89,6 +96,8 @@ def verify_execution(
         elif check.identifier == "context.report":
             checks.extend(check.handler(result))
         elif check.identifier == "patch.evidence":
+            checks.extend(check.handler(result))
+        elif check.identifier == "test.evidence":
             checks.extend(check.handler(result))
     if artifact_type == "unsupported":
         checks.append(
