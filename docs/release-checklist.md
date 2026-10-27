@@ -22,6 +22,15 @@ This checklist is internal planning aid. **Completion of this checklist does not
 
 ## CI, packaging, and maintenance
 
+### Validated engineering baseline evidence
+
+- [x] Baseline `62d77e9d2e3cc88cee2d6685d5334d76657b1975`: CI run `40534456712` passed all 7 required Ubuntu/Windows Python 3.11–3.13 and Ubuntu packaging jobs.
+- [x] Baseline test jobs passed Ruff check, Ruff format check, pytest, and CLI help, version, and doctor smoke checks.
+- [x] Baseline package job built wheel and sdist, ran `scripts/verify_package.py`, and completed Ubuntu fresh-wheel entry point, CLI, TUI help, package-resource, and Pipeline-OFF smoke checks.
+- [x] Baseline artifact `12748025807` metadata and bounded archive inspection verified wheel `METADATA`, sdist `PKG-INFO`, Project-URL fields, legacy license metadata consistency, and wheel `RECORD`; this is not signed build provenance or a complete security certification.
+- [x] Baseline artifact checksums recorded: `zeroagent-0.12.0.dev0-py3-none-any.whl` `b2b7303ddd7074a480a9beca208cbff285b1d8551d9e21213ea593a97bc1c6be`; `zeroagent-0.12.0.dev0.tar.gz` `3e07b936843e2634daedbb58baa269ff22ce2db91a19a26cac915cf01b23f210`.
+- [x] Windows Python 3.11–3.13 editable-install CI passed; Windows fresh-wheel installation and smoke validation remain unverified.
+
 - [ ] Confirm Python/OS matrix result for release candidate: Ubuntu and Windows, Python 3.11, 3.12, 3.13.
 - [ ] Run Ruff check, Ruff format check, pytest, and dependency check for release candidate.
 - [ ] Build wheel and sdist; run archive scanner.
