@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
   shutdown settlement, and duplicate-action safety coverage.
 - Clarified Pipeline status, approval versus execution, installation, and security
   documentation. No release has been published.
+- Redesigned README with approved local branding assets, CI-tested platform scope,
+  architecture overview, and security-boundary summaries.
+- Added CLI usage, active Textual workspace, troubleshooting, and internal
+  release-readiness documentation. No release has been published.
 
 ## 0.12.0.dev0 - 2026-10-24
 

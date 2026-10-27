@@ -1,155 +1,204 @@
-# ZEROAGENT X
+<p align="center">
+  <img src="docs/assets/zeroagent-x-banner.png" alt="ZEROAGENT X — local-first, proof-driven developer automation" width="100%">
+</p>
 
-**Don't Just Run AI. Prove It Works.**
+<p align="center"><strong>Local-First Developer Automation, Under Your Control.</strong></p>
 
-ZEROAGENT X is an open-source, local-first developer workflow tool. It provides
-read-only planning and analysis, explicit controlled edit and test workflows,
-local evidence checks, and a Textual workspace. Defaults disable telemetry,
-cloud providers, paid APIs, and network access.
+<p align="center">
+  Deterministic routing · controlled local workflows · structural evidence verification · interactive terminal workspace
+</p>
 
-## Status
+<p align="center">
+  <a href="https://github.com/harisazharir-boop/zeroagent-x/actions/workflows/ci.yml"><img src="https://github.com/harisazharir-boop/zeroagent-x/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-00E5FF" alt="CI-tested Python versions 3.11, 3.12, and 3.13">
+  <img src="https://img.shields.io/badge/version-0.12.0.dev0-8B5CF6" alt="Development version 0.12.0.dev0">
+  <img src="https://img.shields.io/badge/status-development%20preview-00E6A8" alt="Development preview">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-080D18" alt="Apache-2.0 license"></a>
+</p>
 
-Development preview. Version `0.12.0.dev0` includes guarded local execution,
-but is not a published release or a guarantee of semantic code correctness.
+<p align="center">
+  <a href="#overview">Overview</a> · <a href="#features">Features</a> · <a href="#architecture">Architecture</a> · <a href="#quick-start">Quick Start</a> · <a href="#cli">CLI</a> · <a href="#textual-workspace">TUI</a><br>
+  <a href="#security-by-design">Security</a> · <a href="#platform-support">Platform Support</a> · <a href="#documentation">Documentation</a> · <a href="#contributing">Contributing</a>
+</p>
 
-## Available now
+> **Development preview.** ZEROAGENT X is unpublished. It does not promise semantic code correctness, complete security, or unrestricted autonomous coding.
 
-- Python package and `zeroagent` CLI.
-- `doctor` command with real local runtime diagnostics.
-- Read-only deterministic repository analysis with `zeroagent analyze`.
-- Language file-count distribution, ecosystem manifests, and dependency metadata.
-- JSON reports with relative-path evidence and structured warnings.
-- ZeroCost Router for deterministic local capability selection and execution.
-- ProofEngine verification for routing and repository-analysis artifacts.
-- AgentBlackBox opt-in local execution history and historical replay.
-- Optional loopback-only Ollama commands for explicit local text generation.
-- Simple Graphite Textual workspace (`zeroagent` in an interactive terminal, or
-  `zeroagent tui --workspace .`) with planning and controlled Pipeline workflow.
-- Controlled pytest execution with exact digest approval (`zeroagent test`).
-- Safe code editing with unified diffs and recovery backups (`zeroagent edit`).
-- Safe configuration defaults: no telemetry, network access, paid providers,
-  cloud providers, or shell execution.
-- Linux and Windows compatible Python code.
+## Overview
 
-## Pipeline workflow
+ZEROAGENT X is an open-source local-first developer workflow tool. It provides read-only repository analysis and planning, registered local capability routing, approval-bound edits and tests, ProofEngine structural checks, opt-in local history, and a Textual terminal workspace.
 
-Pipeline is OFF until **Start Pipeline**. It plans and analyzes, then pauses for
-explicit input. Load a proposal JSON and inspect its workspace, ID, digest, and
-exact diff. **Approve Edit** records approval only; **Apply Approved Edit** is a
-separate file-changing action. Create and inspect a controlled test specification
-the same way. **Approve Test** does not run it; **Run Approved Test** starts only
-the allowlisted runner. Stop waits for active Apply or Test work to settle safely.
+### Why ZEROAGENT X?
 
-Reports retain stage evidence and can be `VERIFIED`, `FAILED`, or `INCOMPLETE`.
-Structural verification does not prove resulting code is logically correct. An
-Apply failure may have changed files; automatic rollback is not guaranteed.
+- **Local-first.** Default settings disable telemetry, cloud providers, paid APIs, network access, and shell-command execution. Optional Ollama use is explicit and loopback-only.
+- **Deterministic.** Routing selects from registered local capabilities using fixed rules and policy decisions. It is not general autonomous execution.
+- **Controlled.** Sensitive operations require explicit actions and approval-bound exact digests.
+- **Verifiable.** ProofEngine reports `VERIFIED`, `FAILED`, or `INCOMPLETE` for implemented structural checks; it does not establish semantic correctness.
+- **Transparent.** AgentBlackBox recording is explicit opt-in; replay displays stored history without rerunning work. Redaction is best effort.
 
-## Installation
+No paid API is required by built-in capabilities. Local CPU, storage, hardware, and electricity still have costs.
 
-Requires Python 3.11 or newer.
+## Features
 
-For a source checkout:
+|  |  |
+|:---|:---|
+| **◇ Deterministic Routing**<br><sub>Fixed task classification and static local capabilities. `route` decides; `run` separately invokes only permitted registered handlers.</sub> | **◆ ProofEngine**<br><sub>Checks routing and artifact structure with explicit status. It does not prove source safety or semantic correctness.</sub> |
+| **▣ Safe Code Editing**<br><sub>Text-only structured proposals require exact approval, containment checks, and byte-exact SHA-256 stale checks. Multi-file apply is not atomic.</sub> | **◉ AgentBlackBox**<br><sub>Opt-in sanitized local history with bounded retention and read-only replay. Redaction is best effort; storage is not tamper-proof.</sub> |
+| **▤ Textual Agent Workspace**<br><sub>Active CLI-launched full-screen Textual UI for planning, inspection, explicit actions, and status. Interactive terminal required.</sub> | **▧ Guarded Pipeline**<br><sub>Starts `OFF`; plan and analysis pause for review. Edit and test remain separate, approval-bound, owned operations.</sub> |
 
-```bash
-python -m pip install -e ".[dev]"
+## Architecture
+
+```mermaid
+flowchart TD
+    subgraph UI[User interfaces]
+        CLI[CLI]
+        TUI[Textual workspace]
+    end
+
+    subgraph Local[Local analysis and routing]
+        Analysis[Repository analysis]
+        Plan[Deterministic planning]
+        Router[Router]
+        Decision[Routing decision]
+        Handler[Registered local handler]
+    end
+
+    subgraph Guarded[Guarded operations]
+        Edit[Safe edit workflow]
+        Test[Controlled pytest workflow]
+        Proof[ProofEngine]
+        BlackBox[Opt-in AgentBlackBox]
+    end
+
+    Ollama[Optional loopback Ollama]
+
+    CLI --> Analysis
+    CLI --> Plan
+    CLI --> Router
+    CLI --> Edit
+    CLI --> Test
+    TUI --> Analysis
+    TUI --> Plan
+    TUI --> Router
+    TUI --> Edit
+    TUI --> Test
+    Router -->|route| Decision
+    Router -->|explicit run| Handler
+    Handler -->|--verify requested| Proof
+    Edit -->|CLI or Pipeline evidence check| Proof
+    Test -->|CLI or Pipeline evidence check| Proof
+    CLI -->|--record| BlackBox
+    CLI -->|explicit ai commands| Ollama
+    TUI -->|explicit local AI action| Ollama
 ```
 
-## Usage
+Not every operation uses the router, ProofEngine, or BlackBox. TUI uses same local services but has its own explicit UI actions. Ollama is optional, installed and started manually, and never used as cloud fallback. See [architecture](docs/architecture.md).
+
+## Quick Start
+
+Requires Python 3.11 or newer. CI validates Python 3.11, 3.12, and 3.13.
+
+**Ubuntu / Linux**
 
 ```bash
-zeroagent --help
-zeroagent --version
-zeroagent doctor
-zeroagent analyze .
+python -m venv .venv
+.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/zeroagent doctor
+.venv/bin/zeroagent --help
+```
+
+Successful `zeroagent doctor` reports local runtime details and current safe-default policy state. It does not contact cloud providers or execute repository code.
+
+**Windows PowerShell**
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.venv\Scripts\zeroagent.exe doctor
+.venv\Scripts\zeroagent.exe --help
+```
+
+Use `python -m zeroagent --help` if console-script lookup fails. Project is not published to PyPI; commands above require source checkout. Full paths, activation, and tested-install scope: [installation guide](docs/installation.md).
+
+## CLI
+
+```bash
+# Read-only repository report
 zeroagent analyze . --format json
-zeroagent analyze . --output report.json
+
+# Deterministic decision only: never invokes handler
 zeroagent route "Analyze this repository"
-zeroagent route "Analyze this repository" --format json
+
+# Explicit policy-permitted registered local handler
 zeroagent run "Analyze this repository" --workspace .
+
+# Explicit execution plus structural evidence checks
 zeroagent run "Analyze this repository" --workspace . --verify
-zeroagent run "Analyze this repository" --workspace . --verify --format json
-zeroagent run "Analyze this repository" --workspace . --verify --record
-zeroagent history
+
+# Optional local Ollama diagnostics
 zeroagent ai doctor
-zeroagent ai models
-zeroagent ai ask "Explain dependency injection" --model <installed-model>
-zeroagent tui --workspace .
-zeroagent context inspect --workspace .
-zeroagent context preview "Explain this project" --workspace .
-zeroagent context ask "Explain authentication" --workspace . --model <installed-model> --allow-context
-zeroagent plan tools
-zeroagent plan create "Find and fix the authentication bug" --workspace .
-zeroagent edit --help
-zeroagent test --help
-python -m zeroagent --help
+
+# Planning never executes tools
+zeroagent plan create "Explain this project" --workspace .
 ```
 
-`analyze` does not execute repository code, install dependencies, or use network
-services. See [architecture](docs/architecture.md) for report schema, limits, and
-ignore behavior.
+`analyze --output PATH` creates a new JSON file and rejects an existing destination. `route` only returns decision evidence. `run` executes a permitted registered handler. `run --verify` adds structural verification. Full command, side-effect, and exit-code reference: [usage guide](docs/usage.md).
 
-`route` only returns deterministic decision evidence; it never executes a
-capability. `run` executes only registered, policy-permitted local handlers.
-Zero paid API requirement does not mean zero hardware, electricity, or local
-compute cost.
+## Textual Workspace
 
-`--verify` checks routing-policy consistency and repository report consistency.
-It returns `VERIFIED`, `FAILED`, or `INCOMPLETE`; it does not prove source safety,
-complete filesystem inventory, cryptographic integrity, or absence of vulnerabilities.
+**Interactive terminal required.** Bare `zeroagent` opens active full-screen Textual workspace. Use `zeroagent tui --workspace .` to select workspace explicitly. Noninteractive bare invocation prints CLI help; `zeroagent tui` rejects noninteractive use.
 
-`--record` is explicit opt-in. It stores a sanitized local event record outside
-analyzed repository by default. `replay` displays stored history only; it never reruns capability.
+| Explore | Control |
+|:---|:---|
+| **Agent Workspace** separates Route → Run → Verify for supported tasks. Repository analysis, context research, planning, ProofEngine, history, replay, settings, and help remain available as focused screens. | **Safe Editing**, **Controlled Tests**, and **Pipeline** make approval and execution separate actions. Pipeline begins `OFF`; cancellation waits for owned work to settle. |
 
-Local AI is optional. Install Ollama and obtain model manually, then use explicit
-`ai` commands. ZEROAGENT X never installs Ollama, downloads models, uses cloud
-fallback, or requires paid APIs. Local models need local hardware and electricity.
-Generated text is untrusted and not semantically verified.
+Local AI remains optional and model output is untrusted.
 
-`zeroagent` in an interactive terminal, or `zeroagent tui --workspace .`, enters the full-screen
-Simple Graphite workspace with Home planning, slash-command feature navigation,
-and dedicated feature pages. Noninteractive `zeroagent` displays CLI help; the
-explicit `tui` command rejects noninteractive invocation.
+Safe edits require current exact-digest approval, reject stale source bytes, and may leave partial multi-file changes on failure. Recovery is explicit, outside workspace, and best effort. See [Textual workspace guide](docs/tui.md).
 
-Controlled test execution via `zeroagent test` supports an allowlisted pytest runner
-with exact digest approval and process isolation boundaries. Test results are
-structurally verified by ProofEngine while marking semantic correctness as incomplete.
+## Security by Design
 
-Repository-aware AI requires explicit `--allow-context`. Sensitive filenames,
-symlinks, binary data, oversized files, and unsupported types are excluded. Source
-excerpts are bounded, hashed, and cited as supplied evidence; model explanations
-remain unverified interpretations.
+- Offline-first safe defaults; no cloud or paid-provider fallback.
+- Static capabilities and policy checks; unknown tasks do not execute.
+- Explicit workspace selection and containment checks.
+- Approval-bound safe editing and controlled `pytest` execution.
+- Byte-exact SHA-256 proposal validation and stale-proposal rejection.
+- Portable relative-path evidence validation in ProofEngine.
+- Opt-in local BlackBox records; bounded storage and best-effort redaction.
 
-Plans are deterministic and planning-only. They declare tools, dependencies,
-permissions, and unsupported future work. They never execute handlers, edit files,
-run tests, or grant authorization.
+Limits matter: ProofEngine is structural, not semantic; BlackBox storage is not tamper-proof; controlled tests execute workspace code without OS sandboxing; multi-file edit application is not transactional. Full threat model and reporting route: [SECURITY.md](SECURITY.md).
 
-### Agent Workspace
+## Platform Support
 
-Open **Agent Workspace** from command palette or enter `/agent`. It provides explicit
-`Task → Route → Run → Verify` flow. **Route Task** selects registered local capability
-and applies policy without execution. **Run Agent** is separate explicit action; task
-or workspace changes invalidate prior route. **Verify Results** runs existing
-ProofEngine over actual execution evidence. Arbitrary shell commands and unknown tasks
-cannot bypass policy. Some capability result types have no structural proof checks and
-correctly report `INCOMPLETE`. Pipeline editing and controlled testing remain separate
-exact-approval workflows. Ollama stays optional; no cloud service is required.
+Latest full matrix passed on commit [`5e12ea4`](https://github.com/harisazharir-boop/zeroagent-x/commit/5e12ea4039633429318a3447f6ecfb7396c15c34), CI run [`40473944350`](https://github.com/harisazharir-boop/zeroagent-x/actions/runs/40473944350).
 
-Safe editing accepts structured text-only proposals. Validate and preview are
-read-only. Apply needs exact proposal-digest approval, detects stale hashes, and
-stores explicit recovery data outside workspace. No shell commands or tests run.
+| Environment | CI status | Scope |
+|---|---:|---|
+| Ubuntu, Python 3.11 | PASS | Ruff, full `322`-test suite, CLI smoke |
+| Ubuntu, Python 3.12 | PASS | Ruff, full `322`-test suite, CLI smoke |
+| Ubuntu, Python 3.13 | PASS | Ruff, full `322`-test suite, CLI smoke |
+| Windows, Python 3.11 | PASS | Ruff, full `322`-test suite, CLI smoke |
+| Windows, Python 3.12 | PASS | Ruff, full `322`-test suite, CLI smoke |
+| Windows, Python 3.13 | PASS | Ruff, full `322`-test suite, CLI smoke |
+| Ubuntu, Python 3.13 | PASS | Wheel/sdist build, package scan, fresh wheel smoke, resource and Pipeline-OFF checks |
 
-## Development
+Windows fresh-wheel installation was not separately covered by package job. Python 3.14 is not part of validated release matrix. Passing CI does not guarantee every terminal, distribution, or environment.
 
-```bash
-python -m pip install -e ".[dev]"
-python -m pytest -q
-python -m ruff check .
-python -m ruff format --check .
-```
+## Documentation
 
-Read [development guide](docs/development.md) before contributing. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for contribution process and
-[SECURITY.md](SECURITY.md) for security reporting and project boundaries.
+- [Installation](docs/installation.md)
+- [Usage and CLI reference](docs/usage.md)
+- [Textual workspace guide](docs/tui.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Development](docs/development.md)
+- [Architecture](docs/architecture.md)
+- [Security policy](SECURITY.md)
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
+- [Internal release checklist](docs/release-checklist.md)
+
+## Contributing
+
+Read [development guide](docs/development.md) and [CONTRIBUTING.md](CONTRIBUTING.md). Keep changes focused, test behavior changes, and make new network, provider, shell, or destructive behavior explicit and documented.
 
 ## License
 

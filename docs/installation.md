@@ -1,44 +1,71 @@
 # Installation
 
-ZEROAGENT X supports Python 3.11 or newer on Linux and Windows.
+ZEROAGENT X is an unpublished development preview. Install from source checkout; no PyPI installation path is documented.
 
-## Install from source
+## Requirements and validated scope
 
-Obtain a project source checkout, then run:
+- Python `>=3.11` is required by `pyproject.toml`.
+- CI validated Ubuntu and Windows on Python 3.11, 3.12, and 3.13 for commit `5e12ea4`.
+- Fresh wheel installation smoke ran on Ubuntu Python 3.13 only.
+- Python 3.14 and Windows fresh-wheel installation are not part of validated release matrix.
+
+## Ubuntu / Linux source setup
 
 ```bash
 python -m venv .venv
+.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/zeroagent --version
+.venv/bin/zeroagent doctor
+.venv/bin/zeroagent --help
 ```
 
-Linux:
+Activate virtual environment if desired:
 
 ```bash
-.venv/bin/python -m pip install -e ".[dev]"
+source .venv/bin/activate
+zeroagent doctor
 ```
 
-Windows PowerShell:
+## Windows PowerShell source setup
 
 ```powershell
+python -m venv .venv
 .venv\Scripts\python.exe -m pip install -e ".[dev]"
+.venv\Scripts\zeroagent.exe --version
+.venv\Scripts\zeroagent.exe doctor
+.venv\Scripts\zeroagent.exe --help
 ```
 
-## Verify
+Activate virtual environment if desired:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+zeroagent doctor
+```
+
+If PowerShell execution policy blocks activation, run commands through `.venv\Scripts\python.exe` or `.venv\Scripts\zeroagent.exe`; do not weaken project security controls.
+
+## Verify and launch
 
 ```bash
+zeroagent --help
 zeroagent --version
 zeroagent doctor
-zeroagent analyze .
+python -m zeroagent --help
 zeroagent tui --help
 ```
 
-Installation does not require API keys, cloud authentication, or paid API
-accounts. Default configuration does not make network requests.
+`python -m zeroagent --help` is fallback when shell cannot find `zeroagent`. Full-screen TUI requires interactive stdin and stdout:
+
+```bash
+zeroagent tui --workspace .
+```
+
+Bare `zeroagent` opens Textual workspace in interactive terminal; noninteractive bare use shows CLI help. Explicit `zeroagent tui` rejects noninteractive invocation with exit code `2`.
 
 ## Optional local AI
 
-Install Ollama separately using its official instructions, start its local service,
-and obtain a model manually. ZEROAGENT X does not install Ollama or download models.
-Then query only an installed model:
+Install Ollama separately using official instructions, start local service, and obtain a model manually. ZEROAGENT X does not install Ollama, download models, contact cloud providers, or use paid fallback.
 
 ```bash
 zeroagent ai doctor
@@ -46,60 +73,11 @@ zeroagent ai models
 zeroagent ai ask "Explain dependency injection" --model <installed-model>
 ```
 
-TUI local AI also requires a reachable manually started Ollama service and an
-installed model. It does not store raw prompts or responses by default.
+Only loopback Ollama endpoints are accepted: `127.0.0.1` or `::1`, plain HTTP, port `11434`. Local AI output is untrusted.
 
-## Repository context
+## Next steps
 
-Repository-aware local AI is explicit and read-only. Preview selected source paths:
-
-```bash
-zeroagent context preview "Explain this project" --workspace .
-```
-
-Authorize bounded source reads and local transfer only when intended:
-
-```bash
-zeroagent context ask "Explain this project" --workspace . --model <installed-model> --allow-context
-```
-
-## Planning
-
-Create read-only plans without running anything:
-
-```bash
-zeroagent plan tools
-zeroagent plan create "Find and fix a bug" --workspace .
-```
-
-## Controlled edits
-
-Use trusted structured proposals with `zeroagent edit validate`, `preview`, and
-exact-digest `apply`. This feature never invokes shell commands or test runners.
-
-## Controlled tests
-
-Create and preview allowlisted test specifications with `zeroagent test create` and
-`zeroagent test preview`, then execute only with exact-digest approval via `zeroagent test run`.
-
-## Textual workspace and Pipeline
-
-Interactive `zeroagent` launches the Textual full-screen application. In a
-noninteractive environment it prints CLI help; `zeroagent tui` rejects
-noninteractive invocation. Use `zeroagent tui --workspace .` to select a workspace.
-
-Home creates non-executing plans. Open **Agent Workspace** through command palette
-or `/agent` for `Task → Route → Run → Verify`. Route selects existing permitted local
-capability without running it. Run is explicit and rechecks current task/workspace.
-Verify uses ProofEngine on actual result evidence; unsupported result types report
-`INCOMPLETE`, not `VERIFIED`. Task text is never interpreted as shell command. Unknown
-tasks remain denied. Ollama is optional; cloud services are not required.
-
-Pipeline is OFF until **Start Pipeline**. Proposal preview is read-only. Approval
-requires exact current digest and does not execute anything. **Apply Approved Edit**
-changes files only after approval. **Run Approved Test** starts only approved,
-allowlisted pytest. Stop waits for active work to settle. Apply failures can leave
-partial changes; automatic rollback is not guaranteed.
-
-Windows instructions are documentation-reviewed only; runtime validation for this
-phase ran on Ubuntu Linux.
+- [Usage and CLI reference](usage.md)
+- [Textual workspace guide](tui.md)
+- [Troubleshooting](troubleshooting.md)
+- [Security policy](../SECURITY.md)
