@@ -11,8 +11,8 @@
 <p align="center">
   <a href="https://github.com/harisazharir-boop/zeroagent-x/actions/workflows/ci.yml"><img src="https://github.com/harisazharir-boop/zeroagent-x/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-00E5FF" alt="CI-tested Python versions 3.11, 3.12, and 3.13">
-  <img src="https://img.shields.io/badge/version-0.12.0.dev0-8B5CF6" alt="Development version 0.12.0.dev0">
-  <img src="https://img.shields.io/badge/status-development%20preview-00E6A8" alt="Development preview">
+  <img src="https://img.shields.io/badge/version-0.12.0b1-8B5CF6" alt="Beta candidate version 0.12.0b1">
+  <img src="https://img.shields.io/badge/status-beta%20candidate-00E6A8" alt="Unpublished beta candidate">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-080D18" alt="Apache-2.0 license"></a>
 </p>
 
@@ -21,7 +21,7 @@
   <a href="#security-by-design">Security</a> · <a href="#platform-support">Platform Support</a> · <a href="#documentation">Documentation</a> · <a href="#contributing">Contributing</a>
 </p>
 
-> **Development preview.** ZEROAGENT X is unpublished. It does not promise semantic code correctness, complete security, or unrestricted autonomous coding.
+> **Unpublished beta candidate.** ZEROAGENT X `0.12.0b1` is prepared for release review, not published. It does not promise semantic code correctness, complete security, or unrestricted autonomous coding.
 
 ## Overview
 
@@ -169,7 +169,7 @@ Limits matter: ProofEngine is structural, not semantic; BlackBox storage is not 
 
 ## Platform Support
 
-Latest full matrix passed on commit [`574491b`](https://github.com/harisazharir-boop/zeroagent-x/commit/574491be49d36dc45aa75c6ec0a600f233fac6de), CI run [`40539452222`](https://github.com/harisazharir-boop/zeroagent-x/actions/runs/40539452222).
+Engineering baseline full matrix passed on commit [`2663083`](https://github.com/harisazharir-boop/zeroagent-x/commit/2663083b732e74384c2339c6de95e5aab6f9f6fc), CI run [`40542273924`](https://github.com/harisazharir-boop/zeroagent-x/actions/runs/40542273924). Candidate-specific CI evidence is required before publication.
 
 | Environment | CI status | Scope |
 |---|---:|---|
@@ -180,8 +180,9 @@ Latest full matrix passed on commit [`574491b`](https://github.com/harisazharir-
 | Windows, Python 3.12 | PASS | Ruff, full `322`-test suite, CLI smoke |
 | Windows, Python 3.13 | PASS | Ruff, full `322`-test suite, CLI smoke |
 | Ubuntu, Python 3.13 | PASS | Wheel/sdist build, package scan, fresh wheel smoke, resource and Pipeline-OFF checks |
+| Windows, Python 3.13 | PASS | Fresh-wheel build, isolated install, metadata, CLI, resource, and Pipeline-OFF smoke |
 
-Windows fresh-wheel installation was not separately covered by package job. Python 3.14 is not part of validated release matrix. Passing CI does not guarantee every terminal, distribution, or environment.
+Python 3.14 is not part of validated release matrix. Passing CI does not guarantee every terminal, distribution, or environment.
 
 ## Documentation
 

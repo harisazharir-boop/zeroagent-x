@@ -66,7 +66,7 @@ def check_wheel(wheel: Path) -> None:
             for name in names
             if name.endswith(".dist-info/METADATA")
         }
-        expected_dist_info = "zeroagent-0.12.0.dev0.dist-info"
+        expected_dist_info = "zeroagent-0.12.0b1.dist-info"
         if dist_infos != {expected_dist_info}:
             raise SystemExit(
                 f"wheel distribution metadata is invalid: {sorted(dist_infos)}"
@@ -80,13 +80,13 @@ def check_wheel(wheel: Path) -> None:
             "zeroagent/cli.py",
             "zeroagent/textual_app.py",
             "zeroagent/assets/logo.png",
-            "zeroagent-0.12.0.dev0.dist-info/METADATA",
-            "zeroagent-0.12.0.dev0.dist-info/entry_points.txt",
+            "zeroagent-0.12.0b1.dist-info/METADATA",
+            "zeroagent-0.12.0b1.dist-info/entry_points.txt",
         }
         missing = required - set(names)
         if missing:
             raise SystemExit(f"wheel missing required members: {sorted(missing)}")
-        entry_points = archive.read("zeroagent-0.12.0.dev0.dist-info/entry_points.txt")
+        entry_points = archive.read("zeroagent-0.12.0b1.dist-info/entry_points.txt")
         if b"zeroagent = zeroagent.cli:main" not in entry_points:
             raise SystemExit("wheel console entry point is invalid")
 

@@ -13,6 +13,18 @@ All notable changes to this project will be documented in this file.
 - Added CLI usage, active Textual workspace, troubleshooting, and internal
   release-readiness documentation. No release has been published.
 
+## 0.12.0b1 - beta candidate, unpublished
+
+- Prepared first public-beta candidate with local-first deterministic routing,
+  policy-gated local workflows, approval-bound editing and controlled tests.
+- Included Textual workspace, ProofEngine structural checks, opt-in local
+  execution history, and optional loopback-only local AI integration.
+- Validated supported CI matrix on Ubuntu and Windows with Python 3.11–3.13,
+  including isolated fresh-wheel smoke coverage on both platforms.
+- Preserved security limits: no unrestricted autonomous execution, OS-level
+  sandboxing, guaranteed multi-file rollback, tamper-proof records, or semantic
+  correctness guarantee.
+
 ## 0.12.0.dev0 - 2026-10-24
 
 - Added full-screen alternate-screen buffer isolation for `zeroagent` interactive terminal mode.

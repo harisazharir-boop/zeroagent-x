@@ -9,7 +9,7 @@ evidence. Do not include secrets or private repository content.
 
 ## Security support status
 
-ZEROAGENT X is currently an unpublished development preview. No public beta
+ZEROAGENT X `0.12.0b1` is an unpublished beta candidate. No public beta
 release line is supported until a maintainer publishes one. After publication,
 the maintainer must identify supported release line(s) and any security-fix
 policy for that beta; historical development and unreleased versions are not
@@ -18,7 +18,7 @@ long-term maintenance commitment.
 
 ## Current security behavior
 
-Current development preview has explicit policy-gated local handlers, controlled
+Current beta candidate has explicit policy-gated local handlers, controlled
 editing, and allowlisted pytest execution. It has no cloud provider, paid-provider fallback,
 arbitrary shell executor, telemetry client, or automatic execution. `zeroagent
 doctor` reads local runtime data only. `zeroagent analyze` reads selected workspace

@@ -1,13 +1,13 @@
 # Installation
 
-ZEROAGENT X is an unpublished development preview. Install from source checkout; no PyPI installation path is documented.
+ZEROAGENT X `0.12.0b1` is an unpublished beta candidate. Install from source checkout; no PyPI or GitHub Release asset installation path exists until authorized publication.
 
 ## Requirements and validated scope
 
 - Python `>=3.11` is required by `pyproject.toml`.
-- CI validated Ubuntu and Windows on Python 3.11, 3.12, and 3.13 for commit `574491be49d36dc45aa75c6ec0a600f233fac6de` in [run `40539452222`](https://github.com/harisazharir-boop/zeroagent-x/actions/runs/40539452222).
-- Fresh wheel installation smoke ran on Ubuntu Python 3.13 only.
-- Python 3.14 and Windows fresh-wheel installation are not part of validated release matrix.
+- Engineering baseline CI validated Ubuntu and Windows on Python 3.11, 3.12, and 3.13 for commit `2663083b732e74384c2339c6de95e5aab6f9f6fc` in [run `40542273924`](https://github.com/harisazharir-boop/zeroagent-x/actions/runs/40542273924).
+- Fresh-wheel installation smoke passed on Ubuntu and Windows Python 3.13 in that baseline.
+- Python 3.14 is not part of validated release matrix. Candidate-specific CI evidence is required before publication.
 
 ## Ubuntu / Linux source setup
 

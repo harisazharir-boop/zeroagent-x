@@ -21,8 +21,8 @@ def make_wheel(
         "zeroagent/cli.py": b"",
         "zeroagent/textual_app.py": b"",
         "zeroagent/assets/logo.png": b"PNG",
-        "zeroagent-0.12.0.dev0.dist-info/METADATA": b"Name: zeroagent\n",
-        "zeroagent-0.12.0.dev0.dist-info/entry_points.txt": (
+        "zeroagent-0.12.0b1.dist-info/METADATA": b"Name: zeroagent\n",
+        "zeroagent-0.12.0b1.dist-info/entry_points.txt": (
             b"zeroagent = zeroagent.cli:main\n"
         ),
     }
@@ -37,10 +37,10 @@ def make_wheel(
 
 def make_sdist(path: Path, members: dict[str, bytes] | None = None) -> None:
     contents = {
-        "zeroagent-0.12.0.dev0/pyproject.toml": b"",
-        "zeroagent-0.12.0.dev0/README.md": b"",
-        "zeroagent-0.12.0.dev0/LICENSE": b"",
-        "zeroagent-0.12.0.dev0/src/zeroagent/assets/logo.png": b"PNG",
+        "zeroagent-0.12.0b1/pyproject.toml": b"",
+        "zeroagent-0.12.0b1/README.md": b"",
+        "zeroagent-0.12.0b1/LICENSE": b"",
+        "zeroagent-0.12.0b1/src/zeroagent/assets/logo.png": b"PNG",
     }
     if members:
         contents.update(members)
@@ -81,7 +81,7 @@ def test_sdist_scans_source_except_exact_prefixed_redaction_module(
     sdist = tmp_path / "fixture.tar.gz"
     make_sdist(
         sdist,
-        {"zeroagent-0.12.0.dev0/src/zeroagent/other.py": SYNTHETIC_ACCESS_KEY_MARKER},
+        {"zeroagent-0.12.0b1/src/zeroagent/other.py": SYNTHETIC_ACCESS_KEY_MARKER},
     )
     with pytest.raises(SystemExit, match="credential-like"):
         check_sdist(sdist)
@@ -98,7 +98,7 @@ def test_sdist_rejects_unrecognized_or_multiple_archive_roots(tmp_path: Path) ->
     make_sdist(
         sdist,
         {
-            "zeroagent-0.12.0.dev0/src/zeroagent/blackbox/redaction.py": (
+            "zeroagent-0.12.0b1/src/zeroagent/blackbox/redaction.py": (
                 SYNTHETIC_ACCESS_KEY_MARKER
             )
         },
@@ -107,7 +107,7 @@ def test_sdist_rejects_unrecognized_or_multiple_archive_roots(tmp_path: Path) ->
     make_sdist(
         sdist,
         {
-            "zeroagent-0.12.0.dev0/src/zeroagent/blackbox/not-redaction.py": (
+            "zeroagent-0.12.0b1/src/zeroagent/blackbox/not-redaction.py": (
                 SYNTHETIC_ACCESS_KEY_MARKER
             )
         },
@@ -119,7 +119,7 @@ def test_sdist_rejects_unrecognized_or_multiple_archive_roots(tmp_path: Path) ->
 def test_sdist_rejects_oversized_member(tmp_path: Path) -> None:
     sdist = tmp_path / "fixture.tar.gz"
     with tarfile.open(sdist, "w:gz") as archive:
-        info = tarfile.TarInfo("zeroagent-0.12.0.dev0/large.txt")
+        info = tarfile.TarInfo("zeroagent-0.12.0b1/large.txt")
         info.size = 5 * 1024 * 1024 + 1
         archive.addfile(info, io.BytesIO(b"x" * info.size))
     with pytest.raises(SystemExit, match="size limit"):
@@ -163,7 +163,7 @@ def test_wheel_rejects_forbidden_member(tmp_path: Path, member: str) -> None:
     [
         "zeroagent/cli.py",
         "zeroagent/assets/logo.png",
-        "zeroagent-0.12.0.dev0.dist-info/entry_points.txt",
+        "zeroagent-0.12.0b1.dist-info/entry_points.txt",
     ],
 )
 def test_wheel_rejects_missing_required_member(tmp_path: Path, missing: str) -> None:
@@ -178,7 +178,7 @@ def test_wheel_rejects_incorrect_distribution_version(tmp_path: Path) -> None:
     make_wheel(wheel)
     with zipfile.ZipFile(wheel) as archive:
         members = {
-            name.replace("0.12.0.dev0", "9.9.9"): archive.read(name)
+            name.replace("0.12.0b1", "9.9.9"): archive.read(name)
             for name in archive.namelist()
         }
     make_wheel(wheel, members)
@@ -189,7 +189,7 @@ def test_wheel_rejects_incorrect_distribution_version(tmp_path: Path) -> None:
 def test_script_entry_point_accepts_valid_distribution(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    make_wheel(tmp_path / "zeroagent-0.12.0.dev0-py3-none-any.whl")
-    make_sdist(tmp_path / "zeroagent-0.12.0.dev0.tar.gz")
+    make_wheel(tmp_path / "zeroagent-0.12.0b1-py3-none-any.whl")
+    make_sdist(tmp_path / "zeroagent-0.12.0b1.tar.gz")
     monkeypatch.setattr("sys.argv", ["verify_package.py", str(tmp_path)])
     main()

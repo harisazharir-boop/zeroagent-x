@@ -82,7 +82,7 @@ jobs:
           $python = Join-Path $installRoot "Scripts/python.exe"
           $zeroagent = Join-Path $installRoot "Scripts/zeroagent.exe"
           & $python -m pip install (Get-ChildItem dist -Filter *.whl | Select-Object -First 1).FullName
-          & $python -c "from importlib.metadata import metadata; m = metadata('zeroagent'); assert m['Name'] == 'zeroagent'; assert m['Version'] == '0.12.0.dev0'"
+          & $python -c "from importlib.metadata import metadata; m = metadata('zeroagent'); assert m['Name'] == 'zeroagent'; assert m['Version'] == '0.12.0b1'"
           & $zeroagent --help
           & $zeroagent --version
           & $zeroagent doctor
