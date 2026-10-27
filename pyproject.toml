@@ -32,6 +32,10 @@ dependencies = [
     "textual>=0.79,<1",
 ]
 
+[project.urls]
+Repository = "https://github.com/harisazharir-boop/zeroagent-x"
+Issues = "https://github.com/harisazharir-boop/zeroagent-x/issues"
+
 [project.optional-dependencies]
 dev = [
     "pytest-asyncio>=0.24,<1",
