@@ -169,7 +169,7 @@ Limits matter: ProofEngine is structural, not semantic; BlackBox storage is not 
 
 ## Platform Support
 
-Latest full matrix passed on commit [`5e12ea4`](https://github.com/harisazharir-boop/zeroagent-x/commit/5e12ea4039633429318a3447f6ecfb7396c15c34), CI run [`40473944350`](https://github.com/harisazharir-boop/zeroagent-x/actions/runs/40473944350).
+Latest full matrix passed on commit [`574491b`](https://github.com/harisazharir-boop/zeroagent-x/commit/574491be49d36dc45aa75c6ec0a600f233fac6de), CI run [`40539452222`](https://github.com/harisazharir-boop/zeroagent-x/actions/runs/40539452222).
 
 | Environment | CI status | Scope |
 |---|---:|---|

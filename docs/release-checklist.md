@@ -30,6 +30,7 @@ This checklist is internal planning aid. **Completion of this checklist does not
 - [x] Baseline artifact `12748025807` metadata and bounded archive inspection verified wheel `METADATA`, sdist `PKG-INFO`, Project-URL fields, legacy license metadata consistency, and wheel `RECORD`; this is not signed build provenance or a complete security certification.
 - [x] Baseline artifact checksums recorded: `zeroagent-0.12.0.dev0-py3-none-any.whl` `b2b7303ddd7074a480a9beca208cbff285b1d8551d9e21213ea593a97bc1c6be`; `zeroagent-0.12.0.dev0.tar.gz` `3e07b936843e2634daedbb58baa269ff22ce2db91a19a26cac915cf01b23f210`.
 - [x] Windows Python 3.11–3.13 editable-install CI passed; Windows fresh-wheel installation and smoke validation remain unverified.
+- [ ] **Implemented locally — remote validation pending:** Windows Python 3.13 fresh-wheel build, isolated install, metadata, CLI, resource, and Pipeline-OFF smoke job.
 
 - [ ] Confirm Python/OS matrix result for release candidate: Ubuntu and Windows, Python 3.11, 3.12, 3.13.
 - [ ] Run Ruff check, Ruff format check, pytest, and dependency check for release candidate.

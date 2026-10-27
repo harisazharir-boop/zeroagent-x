@@ -7,10 +7,19 @@ reporting channel exists, contact project maintainers through repository owner
 contact and include impact, reproduction steps, affected version, and sanitized
 evidence. Do not include secrets or private repository content.
 
+## Security support status
+
+ZEROAGENT X is currently an unpublished development preview. No public beta
+release line is supported until a maintainer publishes one. After publication,
+the maintainer must identify supported release line(s) and any security-fix
+policy for that beta; historical development and unreleased versions are not
+security-supported releases. This policy does not promise a response time or
+long-term maintenance commitment.
+
 ## Current security behavior
 
-This release has explicit policy-gated local handlers, controlled editing, and
-allowlisted pytest execution. It has no cloud provider, paid-provider fallback,
+Current development preview has explicit policy-gated local handlers, controlled
+editing, and allowlisted pytest execution. It has no cloud provider, paid-provider fallback,
 arbitrary shell executor, telemetry client, or automatic execution. `zeroagent
 doctor` reads local runtime data only. `zeroagent analyze` reads selected workspace
 metadata and supported manifest text; it does not execute, import, install, or

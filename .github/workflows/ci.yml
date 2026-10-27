@@ -63,3 +63,34 @@ jobs:
         with:
           name: zeroagent-distributions
           path: dist/
+
+  package-windows:
+    name: package smoke (windows, 3.13)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip build
+      - run: python -m build --wheel --outdir dist
+      - name: Clean wheel install and smoke
+        shell: pwsh
+        run: |
+          $installRoot = Join-Path $env:RUNNER_TEMP "zeroagent-install"
+          python -m venv $installRoot
+          $python = Join-Path $installRoot "Scripts/python.exe"
+          $zeroagent = Join-Path $installRoot "Scripts/zeroagent.exe"
+          & $python -m pip install (Get-ChildItem dist -Filter *.whl | Select-Object -First 1).FullName
+          & $python -c "from importlib.metadata import metadata; m = metadata('zeroagent'); assert m['Name'] == 'zeroagent'; assert m['Version'] == '0.12.0.dev0'"
+          & $zeroagent --help
+          & $zeroagent --version
+          & $zeroagent doctor
+          $workspace = Join-Path $env:RUNNER_TEMP "zeroagent-smoke-workspace"
+          New-Item -ItemType Directory -Path $workspace | Out-Null
+          Set-Content -Path (Join-Path $workspace "sample.py") -Value "pass"
+          & $zeroagent analyze $workspace
+          & $zeroagent route "Analyze this repository"
+          & $zeroagent run "Analyze this repository" --workspace $workspace
+          & $zeroagent tui --help
+          & $python -c "import importlib.resources as r; from zeroagent.textual_app import ZeroAgentApp; assert r.files('zeroagent').joinpath('assets/logo.png').is_file(); assert ZeroAgentApp().pipeline_engine.state.value == 'OFF'"

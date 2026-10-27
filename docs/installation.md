@@ -5,7 +5,7 @@ ZEROAGENT X is an unpublished development preview. Install from source checkout;
 ## Requirements and validated scope
 
 - Python `>=3.11` is required by `pyproject.toml`.
-- CI validated Ubuntu and Windows on Python 3.11, 3.12, and 3.13 for commit `5e12ea4`.
+- CI validated Ubuntu and Windows on Python 3.11, 3.12, and 3.13 for commit `574491be49d36dc45aa75c6ec0a600f233fac6de` in [run `40539452222`](https://github.com/harisazharir-boop/zeroagent-x/actions/runs/40539452222).
 - Fresh wheel installation smoke ran on Ubuntu Python 3.13 only.
 - Python 3.14 and Windows fresh-wheel installation are not part of validated release matrix.
 
