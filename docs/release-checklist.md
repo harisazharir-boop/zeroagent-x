@@ -14,9 +14,10 @@ This checklist is internal planning aid. **Completion of this checklist does not
 
 ## Pending metadata and security UX work
 
-- [ ] **Pending:** Add confirmed repository, documentation, issue tracker, and security URLs to package metadata.
-- [ ] **Pending:** Modernize deprecated license metadata after packaging-toolchain compatibility review.
-- [ ] **Pending:** Correct active Textual UI phrase claiming “atomic rollback”; implementation uses non-atomic multi-file apply with best-effort recovery.
+- [x] Add confirmed repository and issue tracker URLs to package metadata.
+- [ ] **Pending:** Confirm documentation and security URLs before adding them to package metadata.
+- [ ] **Deferred:** Modernize deprecated license metadata in a dedicated release-preparation phase: require compatible `setuptools>=77.0.3`, SPDX license expression, explicit license-file declaration, license-classifier removal, and isolated wheel/sdist metadata and license-file validation.
+- [x] Correct active Textual UI safe-edit wording: multi-file application is non-atomic, and recovery is explicit and best effort.
 - [ ] **Pending:** Confirm dedicated private security reporting route beyond repository-owner contact.
 
 ## CI, packaging, and maintenance
