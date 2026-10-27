@@ -697,8 +697,8 @@ def test_safe_edit_partial_failure_retains_backup_without_false_success(
 ) -> None:
     from zeroagent.editing import FileChange, apply, approve, make_proposal
 
-    (tmp_path / "a.txt").write_text("old-a\n")
-    (tmp_path / "b.txt").write_text("old-b\n")
+    (tmp_path / "a.txt").write_bytes(b"old-a\n")
+    (tmp_path / "b.txt").write_bytes(b"old-b\n")
     changes = [
         FileChange(
             path="a.txt",
