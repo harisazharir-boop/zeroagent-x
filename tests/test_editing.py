@@ -38,18 +38,37 @@ def change(
 
 def test_preview_validation_and_exact_approval_apply_recovery(tmp_path: Path) -> None:
     target = tmp_path / "app.py"
-    target.write_text("old\n")
+    target.write_bytes(b"old\n")
     proposal = make_proposal(tmp_path, [change("app.py", "old\n", "new\n")], "update")
     validate_proposal(proposal, tmp_path)
-    assert target.read_text() == "old\n"
+    assert target.read_bytes() == b"old\n"
     diff = preview(proposal, tmp_path)
     assert "-old" in diff and "+new" in diff and proposal.digest
     approval = approve(proposal, tmp_path)
     recovery = tmp_path.parent / "recovery"
     result = apply(proposal, approval, tmp_path, recovery)
-    assert target.read_text() == "new\n" and result.structural_status == "PATCH_APPLIED"
+    assert (
+        target.read_bytes() == b"new\n" and result.structural_status == "PATCH_APPLIED"
+    )
     assert recover(recovery, tmp_path) == ["app.py"]
-    assert target.read_text() == "old\n"
+    assert target.read_bytes() == b"old\n"
+
+
+@pytest.mark.parametrize("original", [b"old\n", b"old\r\n"])
+def test_edit_digest_validates_exact_newline_bytes(
+    tmp_path: Path, original: bytes
+) -> None:
+    target = tmp_path / "app.py"
+    target.write_bytes(original)
+    proposal = make_proposal(
+        tmp_path,
+        [change("app.py", original.decode(), "new\n")],
+        "update",
+    )
+    validate_proposal(proposal, tmp_path)
+    target.write_bytes(original.replace(b"\n", b"\nchanged"))
+    with pytest.raises(EditError, match="Stale"):
+        validate_proposal(proposal, tmp_path)
 
 
 @pytest.mark.parametrize("path", ["../x.py", ".git/config", ".env", "secret.key"])

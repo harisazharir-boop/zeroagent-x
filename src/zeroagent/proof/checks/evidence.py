@@ -1,6 +1,6 @@
 """Portable validation for untrusted evidence references."""
 
-from pathlib import PurePath, PureWindowsPath
+from pathlib import PurePosixPath, PureWindowsPath
 
 from zeroagent.core.repository import Evidence
 from zeroagent.proof.models import CheckResult, EvidenceReference
@@ -8,7 +8,9 @@ from zeroagent.proof.models import CheckResult, EvidenceReference
 
 def _safe_relative_path(value: str) -> bool:
     windows_path = PureWindowsPath(value)
-    posix_path = PurePath(value)
+    # Evidence paths use portable slash-separated repository syntax. Validate
+    # both path dialects explicitly rather than using host-dependent PurePath.
+    posix_path = PurePosixPath(value)
     return (
         bool(value)
         and not windows_path.is_absolute()

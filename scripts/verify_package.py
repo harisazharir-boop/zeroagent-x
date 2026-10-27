@@ -34,9 +34,24 @@ def check_paths(names: list[str], label: str) -> None:
         )
 
 
-def check_content(name: str, content: bytes, label: str) -> None:
+def _sdist_root(names: list[str]) -> str:
+    roots = {Path(name).parts[0] for name in names if Path(name).parts}
+    if len(roots) != 1 or not next(iter(roots), "").startswith("zeroagent-"):
+        raise SystemExit(f"sdist has invalid archive root: {sorted(roots)}")
+    return roots.pop()
+
+
+def _is_known_redaction_source(name: str, label: str, sdist_root: str | None) -> bool:
+    if label == "wheel":
+        return name == KNOWN_REDACTION_SOURCE
+    return label == "sdist" and name == f"{sdist_root}/src/{KNOWN_REDACTION_SOURCE}"
+
+
+def check_content(
+    name: str, content: bytes, label: str, sdist_root: str | None = None
+) -> None:
     # This module contains literal redaction signatures used to detect secrets.
-    if name == KNOWN_REDACTION_SOURCE:
+    if _is_known_redaction_source(name, label, sdist_root):
         return
     if any(marker in content for marker in SECRET_MARKERS):
         raise SystemExit(f"{label} contains credential-like content: {name}")
@@ -80,13 +95,14 @@ def check_sdist(sdist: Path) -> None:
     with tarfile.open(sdist, "r:gz") as archive:
         names = archive.getnames()
         check_paths(names, "sdist")
+        root = _sdist_root(names)
         for member in archive.getmembers():
             if member.size > MAX_MEMBER_SIZE:
                 raise SystemExit(f"sdist member exceeds size limit: {member.name}")
             if member.isfile():
                 fileobj = archive.extractfile(member)
                 if fileobj is not None:
-                    check_content(member.name, fileobj.read(), "sdist")
+                    check_content(member.name, fileobj.read(), "sdist", root)
         required = (
             "pyproject.toml",
             "README.md",

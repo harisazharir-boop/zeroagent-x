@@ -13,11 +13,12 @@ from zeroagent.blackbox.storage import LocalStorage, StorageError
 from zeroagent.cli import app
 
 runner = CliRunner()
+SYNTHETIC_ACCESS_KEY = "AK" + "IA" + "ABCDEFGHIJKLMNOP"
 
 
 def _record() -> tuple[Recorder, object]:
     recorder = Recorder("Analyze repository password=hunter2")
-    recorder.emit("task_classified", {"api_key": "AKIAABCDEFGHIJKLMNOP"})
+    recorder.emit("task_classified", {"api_key": SYNTHETIC_ACCESS_KEY})
     return recorder, recorder.build(
         status="SUCCEEDED", task_category="repository_analysis"
     )

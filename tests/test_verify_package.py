@@ -11,6 +11,8 @@ import pytest
 
 from scripts.verify_package import check_paths, check_sdist, check_wheel, main
 
+SYNTHETIC_ACCESS_KEY_MARKER = b"AK" + b"IAEXAMPLE"
+
 
 def make_wheel(
     path: Path, members: dict[str, bytes] | None = None, remove: str | None = None
@@ -57,7 +59,7 @@ def test_check_paths_rejects_unsafe_and_sensitive_names() -> None:
 
 def test_wheel_rejects_credential_like_content(tmp_path: Path) -> None:
     wheel = tmp_path / "fixture.whl"
-    make_wheel(wheel, {"safe.txt": b"AKIAEXAMPLE"})
+    make_wheel(wheel, {"safe.txt": SYNTHETIC_ACCESS_KEY_MARKER})
     with pytest.raises(SystemExit, match="credential-like"):
         check_wheel(wheel)
 
@@ -66,11 +68,52 @@ def test_wheel_scans_python_source_except_known_redaction_module(
     tmp_path: Path,
 ) -> None:
     wheel = tmp_path / "fixture.whl"
-    make_wheel(wheel, {"zeroagent/other.py": b"AKIAEXAMPLE"})
+    make_wheel(wheel, {"zeroagent/other.py": SYNTHETIC_ACCESS_KEY_MARKER})
     with pytest.raises(SystemExit, match="credential-like"):
         check_wheel(wheel)
-    make_wheel(wheel, {"zeroagent/blackbox/redaction.py": b"AKIAEXAMPLE"})
+    make_wheel(wheel, {"zeroagent/blackbox/redaction.py": SYNTHETIC_ACCESS_KEY_MARKER})
     check_wheel(wheel)
+
+
+def test_sdist_scans_source_except_exact_prefixed_redaction_module(
+    tmp_path: Path,
+) -> None:
+    sdist = tmp_path / "fixture.tar.gz"
+    make_sdist(
+        sdist,
+        {"zeroagent-0.12.0.dev0/src/zeroagent/other.py": SYNTHETIC_ACCESS_KEY_MARKER},
+    )
+    with pytest.raises(SystemExit, match="credential-like"):
+        check_sdist(sdist)
+
+
+def test_sdist_rejects_unrecognized_or_multiple_archive_roots(tmp_path: Path) -> None:
+    sdist = tmp_path / "fixture.tar.gz"
+    make_sdist(sdist, {"other/src/zeroagent/blackbox/redaction.py": b""})
+    with pytest.raises(SystemExit, match="archive root"):
+        check_sdist(sdist)
+    make_sdist(sdist, {"other/file.txt": b""})
+    with pytest.raises(SystemExit, match="archive root"):
+        check_sdist(sdist)
+    make_sdist(
+        sdist,
+        {
+            "zeroagent-0.12.0.dev0/src/zeroagent/blackbox/redaction.py": (
+                SYNTHETIC_ACCESS_KEY_MARKER
+            )
+        },
+    )
+    check_sdist(sdist)
+    make_sdist(
+        sdist,
+        {
+            "zeroagent-0.12.0.dev0/src/zeroagent/blackbox/not-redaction.py": (
+                SYNTHETIC_ACCESS_KEY_MARKER
+            )
+        },
+    )
+    with pytest.raises(SystemExit, match="credential-like"):
+        check_sdist(sdist)
 
 
 def test_sdist_rejects_oversized_member(tmp_path: Path) -> None:

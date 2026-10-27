@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from io import StringIO
 from pathlib import Path
 
@@ -111,9 +112,9 @@ def test_tui_compact_logo_on_narrow_terminal() -> None:
 
 def test_tui_safe_edit_flow(tmp_path: Path) -> None:
     app_py = tmp_path / "app.py"
-    app_py.write_text("v1\n")
-    orig_hash = "2d27fbdf4e8ca207afbfa388ca9172fbcc6c70e534af2476b3b704f87debadcf"
-    res_hash = "81db67b6a5702b9b68f0016f061c409bf3fb16d062fc854d1b424bb4e9c28c56"
+    app_py.write_bytes(b"v1\n")
+    orig_hash = hashlib.sha256(b"v1\n").hexdigest()
+    res_hash = hashlib.sha256(b"v2\n").hexdigest()
     change = FileChange(
         path="app.py",
         operation="modify",

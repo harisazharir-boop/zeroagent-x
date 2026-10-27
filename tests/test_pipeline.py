@@ -40,7 +40,7 @@ def test_pipeline_is_off_until_explicit_start(tmp_path: Path) -> None:
 
 
 def test_pipeline_starts_read_only_then_waits_for_user_proposal(tmp_path: Path) -> None:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     events: list[tuple[str, str, str]] = []
     engine = PipelineEngine(
         lambda title, detail, kind: events.append((title, detail, kind))
@@ -58,7 +58,7 @@ def test_pipeline_starts_read_only_then_waits_for_user_proposal(tmp_path: Path) 
 def test_pipeline_approval_is_exact_and_cancel_clears_all_run_resources(
     tmp_path: Path,
 ) -> None:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     engine = PipelineEngine()
     engine.start("Improve app", tmp_path)
     proposal = _proposal(tmp_path)
@@ -80,7 +80,7 @@ def test_pipeline_approval_is_exact_and_cancel_clears_all_run_resources(
 
 
 def test_pipeline_test_approval_cannot_cross_runs(tmp_path: Path) -> None:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     engine = PipelineEngine()
     engine.start("Improve app", tmp_path)
     engine.cancel()
@@ -161,7 +161,7 @@ def test_event_sink_failure_does_not_break_lifecycle(tmp_path: Path) -> None:
 def test_pipeline_applies_once_then_executes_approved_passing_test(
     tmp_path: Path,
 ) -> None:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     (tmp_path / "test_app.py").write_text(
         "def test_updated():\n    assert open('app.txt').read() == 'updated\\n'\n"
     )
@@ -190,10 +190,10 @@ def test_pipeline_applies_once_then_executes_approved_passing_test(
 
 
 def test_pipeline_rejects_cross_workspace_and_unapproved_apply(tmp_path: Path) -> None:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     other = tmp_path.parent / "other-workspace"
     other.mkdir()
-    (other / "app.txt").write_text("old\n")
+    (other / "app.txt").write_bytes(b"old\n")
     engine = PipelineEngine()
     engine.start("Improve app", tmp_path)
     proposal = _proposal(tmp_path)
@@ -225,7 +225,7 @@ def test_pipeline_explicit_skips_remain_incomplete(tmp_path: Path) -> None:
 
 
 def test_pipeline_failing_and_timed_out_tests_are_not_success(tmp_path: Path) -> None:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     (tmp_path / "test_app.py").write_text("def test_failure():\n    assert False\n")
     engine = PipelineEngine()
     engine.start("Improve app", tmp_path)
@@ -245,7 +245,7 @@ def test_pipeline_failing_and_timed_out_tests_are_not_success(tmp_path: Path) ->
 
     timeout_workspace = tmp_path.parent / f"{tmp_path.name}-timeout"
     timeout_workspace.mkdir()
-    (timeout_workspace / "app.txt").write_text("old\n")
+    (timeout_workspace / "app.txt").write_bytes(b"old\n")
     (timeout_workspace / "test_slow.py").write_text(
         "import time\ndef test_slow():\n    time.sleep(2)\n"
     )
@@ -268,7 +268,7 @@ def test_pipeline_failing_and_timed_out_tests_are_not_success(tmp_path: Path) ->
 
 
 def test_changed_artifacts_and_old_approvals_cannot_execute(tmp_path: Path) -> None:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     engine = PipelineEngine()
     engine.start("Edit", tmp_path)
     original = _proposal(tmp_path)
@@ -324,7 +324,7 @@ def test_changed_test_spec_and_duplicate_test_execution_reject(tmp_path: Path) -
 
 
 def test_apply_failure_records_failed_terminal_report(tmp_path: Path) -> None:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     engine = PipelineEngine()
     engine.start("Fail apply", tmp_path)
     proposal = _proposal(tmp_path)
@@ -346,7 +346,7 @@ async def test_cancel_async_waits_for_owned_apply_settlement(
 ) -> None:
     import zeroagent.pipeline.engine as pipeline_module
 
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     entered = threading.Event()
     release = threading.Event()
     original_apply = pipeline_module.apply
@@ -384,7 +384,7 @@ async def test_cancel_async_waits_for_owned_apply_settlement(
 def _approved_test_engine(
     tmp_path: Path, recovery_suffix: str = "recovery"
 ) -> PipelineEngine:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     engine = PipelineEngine()
     engine.start("Run test", tmp_path)
     proposal = _proposal(tmp_path)
@@ -440,7 +440,7 @@ async def test_shutdown_waits_for_owned_apply_and_rejects_restart(
 ) -> None:
     import zeroagent.pipeline.engine as pipeline_module
 
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     entered = threading.Event()
     release = threading.Event()
     original = pipeline_module.apply
@@ -525,7 +525,7 @@ async def test_concurrent_stops_finalize_once_after_owned_apply(
 ) -> None:
     import zeroagent.pipeline.engine as pipeline_module
 
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     entered, release = threading.Event(), threading.Event()
     events: list[str] = []
     original = pipeline_module.apply
@@ -568,7 +568,7 @@ async def test_concurrent_async_execution_claims_allow_one_apply_and_one_test(
 ) -> None:
     import zeroagent.pipeline.engine as pipeline_module
 
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     entered, release = threading.Event(), threading.Event()
     calls = 0
     original_apply = pipeline_module.apply
@@ -655,7 +655,7 @@ async def test_concurrent_stop_and_shutdown_finalize_once(
 ) -> None:
     import zeroagent.pipeline.engine as pipeline_module
 
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     entered, release = threading.Event(), threading.Event()
     events: list[str] = []
     original = pipeline_module.apply
@@ -740,7 +740,7 @@ async def test_apply_failure_after_stop_preserves_failed_stage(
 ) -> None:
     import zeroagent.pipeline.engine as pipeline_module
 
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     entered, release = threading.Event(), threading.Event()
 
     def failing_apply(*_args, **_kwargs):
@@ -830,7 +830,7 @@ async def test_mixed_async_apply_owner_rejects_sync_apply(
 ) -> None:
     import zeroagent.pipeline.engine as pipeline_module
 
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     entered, release = threading.Event(), threading.Event()
     calls = 0
     original = pipeline_module.apply
@@ -880,7 +880,7 @@ async def test_mixed_sync_apply_owner_rejects_async_apply(
 ) -> None:
     import zeroagent.pipeline.engine as pipeline_module
 
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     entered, release = threading.Event(), threading.Event()
     calls = 0
     original = pipeline_module.apply

@@ -1,6 +1,7 @@
 """Tests for CLI behavior."""
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -11,6 +12,11 @@ from zeroagent import __version__
 from zeroagent.cli import app
 
 runner = CliRunner()
+
+
+def plain_output(value: str) -> str:
+    """Normalize Rich styling and layout before asserting CLI semantics."""
+    return re.sub(r"\s+", " ", re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", value)).strip()
 
 
 def test_help_is_available() -> None:
@@ -25,8 +31,9 @@ def test_bare_cli_in_noninteractive_mode_shows_help() -> None:
     result = runner.invoke(app, [])
 
     assert result.exit_code == 0
-    assert "Usage: zeroagent" in result.output
-    assert "tui" in result.output
+    output = plain_output(result.output)
+    assert "Usage: zeroagent" in output
+    assert "tui" in output
 
 
 def test_tui_rejects_noninteractive_invocation() -> None:

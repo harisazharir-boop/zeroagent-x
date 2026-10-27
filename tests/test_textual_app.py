@@ -847,7 +847,7 @@ async def _wait_until(predicate, timeout: float = 5) -> None:
 async def _approved_apply(app: ZeroAgentApp, workspace: Path):
     import zeroagent.pipeline.engine as pipeline_module
 
-    (workspace / "app.txt").write_text("old\n")
+    (workspace / "app.txt").write_bytes(b"old\n")
     entered, release = threading.Event(), threading.Event()
     original = pipeline_module.apply
 
@@ -877,7 +877,7 @@ async def _approved_apply(app: ZeroAgentApp, workspace: Path):
 
 
 async def _approved_test(app: ZeroAgentApp, workspace: Path):
-    (workspace / "app.txt").write_text("old\n")
+    (workspace / "app.txt").write_bytes(b"old\n")
     entered, release = threading.Event(), threading.Event()
     await app.pipeline_engine.start_async("Test safely", workspace)
     await _await_pipeline(app.pipeline_engine, "EDIT_PROPOSAL")
@@ -1107,7 +1107,7 @@ async def test_pipeline_concurrent_navigation_first_request_wins(
 
 @pytest.mark.asyncio
 async def test_pipeline_ui_valid_edit_approval(tmp_path: Path) -> None:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     proposal = make_proposal(
         tmp_path,
         [
@@ -1175,7 +1175,7 @@ async def test_pipeline_ui_valid_test_approval(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_pipeline_ui_rejects_stale_edit_artifact(tmp_path: Path) -> None:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     proposal = make_proposal(
         tmp_path,
         [
@@ -1471,7 +1471,7 @@ async def test_pipeline_navigation_then_quit_prioritizes_shutdown(
 async def test_pipeline_ui_rejects_workspace_mismatch(tmp_path: Path) -> None:
     workspace_b = tmp_path.parent / f"{tmp_path.name}-other"
     workspace_b.mkdir()
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     proposal = make_proposal(
         tmp_path,
         [
@@ -1512,7 +1512,7 @@ async def test_pipeline_ui_rejects_workspace_mismatch(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_pipeline_ui_rejects_replaced_edit_artifact(tmp_path: Path) -> None:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
 
     def proposal_for(content: str):
         return make_proposal(
@@ -1602,7 +1602,7 @@ async def test_pipeline_ui_rejects_replaced_test_specification(tmp_path: Path) -
 async def test_pipeline_ui_stale_run_approval_cannot_authorize_new_run(
     tmp_path: Path,
 ) -> None:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
 
     def proposal_for(content: str):
         return make_proposal(
@@ -1655,7 +1655,7 @@ async def test_pipeline_ui_stale_run_approval_cannot_authorize_new_run(
 
 @pytest.mark.asyncio
 async def test_pipeline_ui_duplicate_edit_approval_is_safe(tmp_path: Path) -> None:
-    (tmp_path / "app.txt").write_text("old\n")
+    (tmp_path / "app.txt").write_bytes(b"old\n")
     proposal = make_proposal(
         tmp_path,
         [
@@ -2395,7 +2395,7 @@ async def test_textual_workflow_stepper() -> None:
 @pytest.mark.asyncio
 async def test_textual_safe_edit_requires_approval(tmp_path: Path) -> None:
     target = tmp_path / "app.py"
-    target.write_text("old\n")
+    target.write_bytes(b"old\n")
 
     proposal = make_proposal(
         tmp_path,
