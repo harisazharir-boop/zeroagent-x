@@ -961,7 +961,10 @@ async def test_pipeline_ui_apply_failure_warns_about_possible_partial_changes(
         await app.screen.run_pipeline_action(
             Button.Pressed(app.screen.query_one("#btn-pipeline-apply", Button))
         )
-        await pilot.pause()
+        for _ in range(20):
+            if app.pipeline_engine.last_report is not None:
+                break
+            await pilot.pause()
         output = app.screen.query_one("#result", OutputPanel).content_text
         assert "Some files may already have changed." in output
         assert "rollback is not guaranteed" in output
