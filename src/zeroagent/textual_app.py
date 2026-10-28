@@ -1355,11 +1355,7 @@ class HomeScreen(Screen):
         self.query_one("#planning-task", Input).focus()
 
     def on_screen_resume(self) -> None:
-        if self.app.home_plan:
-            self.set_state_b()
-        else:
-            self.set_state_a()
-        self.query_one("#planning-task", Input).focus()
+        self.call_after_refresh(self._initialize_home)
 
     def action_escape(self) -> None:
         self.query_one("#planning-task", Input).focus()
