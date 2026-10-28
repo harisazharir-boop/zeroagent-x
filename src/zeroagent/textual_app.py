@@ -1340,6 +1340,9 @@ class HomeScreen(Screen):
             self.set_state_b()
 
     def on_mount(self) -> None:
+        self.call_after_refresh(self._initialize_home)
+
+    def _initialize_home(self) -> None:
         if self.app.home_plan:
             self.set_state_b()
         else:
