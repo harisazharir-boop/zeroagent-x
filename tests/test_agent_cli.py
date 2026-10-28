@@ -62,9 +62,12 @@ def test_agent_commands_discoverable_and_default_policy_denies(tmp_path: Path) -
     assert "disabled by policy" in denied.output
 
 
-def test_agent_validate_returns_fingerprint_not_authorization(tmp_path: Path) -> None:
+def test_agent_validate_returns_fingerprint_not_authorization(
+    tmp_path: Path, monkeypatch
+) -> None:
     from zeroagent.cli import app
 
+    monkeypatch.setattr("zeroagent.cli.make_coordinator", lambda **_: coordinator())
     preview = runner.invoke(
         app, ["agent", "validate", "safe task", "--workspace", str(tmp_path)]
     )
