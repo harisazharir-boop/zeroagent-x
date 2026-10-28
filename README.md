@@ -17,11 +17,11 @@
 </p>
 
 <p align="center">
-  <a href="#overview">Overview</a> · <a href="#features">Features</a> · <a href="#architecture">Architecture</a> · <a href="#quick-start">Quick Start</a> · <a href="#cli">CLI</a> · <a href="#textual-workspace">TUI</a><br>
+  <a href="#overview">Overview</a> · <a href="#five-minute-start">Quick Start</a> · <a href="#features">Features</a> · <a href="#architecture">Architecture</a> · <a href="#cli">CLI</a> · <a href="#textual-workspace">TUI</a><br>
   <a href="#security-by-design">Security</a> · <a href="#platform-support">Platform Support</a> · <a href="#documentation">Documentation</a> · <a href="#contributing">Contributing</a>
 </p>
 
-> **Stable release source.** ZEROAGENT X `1.0.0` is release-ready. GitHub publication still requires owner authorization. It does not promise semantic code correctness, complete security, or unrestricted autonomous coding.
+> **Stable release.** [Download ZEROAGENT X `v1.0.0`](https://github.com/harisazharir-boop/zeroagent-x/releases/tag/v1.0.0). PyPI is not used for this release. It does not promise semantic code correctness, complete security, or unrestricted autonomous coding.
 
 ## Overview
 
@@ -36,6 +36,25 @@ ZEROAGENT X is an open-source local-first developer workflow tool. It provides r
 - **Transparent.** AgentBlackBox recording is explicit opt-in; replay displays stored history without rerunning work. Redaction is best effort.
 
 No paid API is required by built-in capabilities. Local CPU, storage, hardware, and electricity still have costs.
+
+## Five-Minute Start
+
+Requires Python 3.11+. Download verified release wheel from the
+[v1.0.0 release](https://github.com/harisazharir-boop/zeroagent-x/releases/tag/v1.0.0),
+then verify its checksum before installation:
+
+```bash
+sha256sum -c SHA256SUMS
+python -m pip install zeroagent-1.0.0-py3-none-any.whl
+zeroagent --version
+zeroagent doctor
+zeroagent analyze . --format json
+```
+
+`doctor` and `analyze` are safe introductory commands: they do not contact cloud
+providers, execute repository code, or start external agents. Launch `zeroagent tui`
+from an interactive terminal for Agent Workspace. Full source, Windows, approval,
+and troubleshooting steps: [quick start guide](docs/quickstart.md).
 
 ## Features
 
@@ -116,7 +135,7 @@ flowchart TD
 
 Not every operation uses the router, ProofEngine, or BlackBox. TUI uses same local services but has its own explicit UI actions. Ollama is optional, installed and started manually, and never used as cloud fallback. See [architecture](docs/architecture.md).
 
-## Quick Start
+## Source Development Setup
 
 Requires Python 3.11 or newer. CI validates Python 3.11, 3.12, and 3.13.
 
@@ -192,16 +211,16 @@ Limits matter: ProofEngine is structural, not semantic; BlackBox storage is not 
 
 ## Platform Support
 
-Engineering baseline full matrix passed on commit [`2663083`](https://github.com/harisazharir-boop/zeroagent-x/commit/2663083b732e74384c2339c6de95e5aab6f9f6fc), CI run [`40542273924`](https://github.com/harisazharir-boop/zeroagent-x/actions/runs/40542273924). Candidate-specific CI evidence is required before publication.
+Release CI passed on commit [`460b1ab`](https://github.com/harisazharir-boop/zeroagent-x/commit/460b1ab4d4faefb236bfdcd11c09d651aad1f1e7), [run `40643682286`](https://github.com/harisazharir-boop/zeroagent-x/actions/runs/40643682286).
 
 | Environment | CI status | Scope |
 |---|---:|---|
-| Ubuntu, Python 3.11 | PASS | Ruff, full `322`-test suite, CLI smoke |
-| Ubuntu, Python 3.12 | PASS | Ruff, full `322`-test suite, CLI smoke |
-| Ubuntu, Python 3.13 | PASS | Ruff, full `322`-test suite, CLI smoke |
-| Windows, Python 3.11 | PASS | Ruff, full `322`-test suite, CLI smoke |
-| Windows, Python 3.12 | PASS | Ruff, full `322`-test suite, CLI smoke |
-| Windows, Python 3.13 | PASS | Ruff, full `322`-test suite, CLI smoke |
+| Ubuntu, Python 3.11 | PASS | Ruff, full `335`-test suite, CLI smoke |
+| Ubuntu, Python 3.12 | PASS | Ruff, full `335`-test suite, CLI smoke |
+| Ubuntu, Python 3.13 | PASS | Ruff, full `335`-test suite, CLI smoke |
+| Windows, Python 3.11 | PASS | Ruff, full `335`-test suite, CLI smoke |
+| Windows, Python 3.12 | PASS | Ruff, full `335`-test suite, CLI smoke |
+| Windows, Python 3.13 | PASS | Ruff, full `335`-test suite, CLI smoke |
 | Ubuntu, Python 3.13 | PASS | Wheel/sdist build, package scan, fresh wheel smoke, resource and Pipeline-OFF checks |
 | Windows, Python 3.13 | PASS | Fresh-wheel build, isolated install, metadata, CLI, resource, and Pipeline-OFF smoke |
 
@@ -210,6 +229,7 @@ Python 3.14 is not part of validated release matrix. Passing CI does not guarant
 ## Documentation
 
 - [Installation](docs/installation.md)
+- [Five-minute quick start](docs/quickstart.md)
 - [Usage and CLI reference](docs/usage.md)
 - [Textual workspace guide](docs/tui.md)
 - [Troubleshooting](docs/troubleshooting.md)
@@ -219,6 +239,8 @@ Python 3.14 is not part of validated release matrix. Passing CI does not guarant
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 - [Internal release checklist](docs/release-checklist.md)
+- [Demo guide](docs/demo-guide.md)
+- [Community growth measurement](docs/community-growth.md)
 
 ## Contributing
 
