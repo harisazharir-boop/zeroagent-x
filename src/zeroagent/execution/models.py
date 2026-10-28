@@ -47,6 +47,7 @@ class ExecutionRequest(ExecutionModel):
     capability: str = "read_only_prompt"
     approval_required: bool = True
     approved: bool = False
+    approval_token: str | None = Field(default=None, min_length=32, max_length=128)
     record_evidence: bool = False
     timeout_seconds: int | None = Field(default=None, ge=1, le=600)
 

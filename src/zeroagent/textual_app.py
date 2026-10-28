@@ -44,7 +44,12 @@ from zeroagent.editing import (
     preview as preview_patch,
 )
 from zeroagent.execution.models import ExecutionResult, ExecutionState
-from zeroagent.execution.service import make_coordinator, make_request, request_digest
+from zeroagent.execution.service import (
+    ApprovalStore,
+    make_coordinator,
+    make_request,
+    request_digest,
+)
 from zeroagent.pipeline import PipelineEngine, PipelineError, PipelineState
 from zeroagent.planning import TaskPlan, create_plan, validate_plan
 from zeroagent.proof.engine import verify_execution
@@ -1490,6 +1495,8 @@ class AgentScreen(FeatureScreen):
         self.agent_request_id: str | None = None
         self.agent_coordinator = make_coordinator()
         self.agent_generation = 0
+        self.agent_approval_token: str | None = None
+        self.agent_approval_fingerprint: str | None = None
 
     def compose_info_rows(self) -> list[tuple[str, ...]]:
         return [("WORKSPACE", str(self.app.workspace))]
@@ -1514,9 +1521,6 @@ class AgentScreen(FeatureScreen):
             )
         yield Static("EXTERNAL AGENT CONTROL CENTER", classes="output-label")
         yield Input("", placeholder="Harmless agent task", id="agent-execution-task")
-        yield Input(
-            "", placeholder="Approval digest from Preview", id="agent-approval-digest"
-        )
         with Horizontal(classes="action-row"):
             yield Button(
                 "Preview Approval", id="btn-agent-preview", classes="btn-secondary"
@@ -1569,7 +1573,7 @@ class AgentScreen(FeatureScreen):
             f"Network required: {adapter.capabilities().requires_network}\n"
             f"Policy enabled: {policy_enabled}\n"
             "Evidence: enabled\n"
-            f"Approval digest: {digest}\n\nPaste exact digest to approve this request.",
+            "Start explicitly authorizes exact request; fingerprint is not credential.",
             "approval",
         )
 
@@ -1583,20 +1587,19 @@ class AgentScreen(FeatureScreen):
         except ValueError as error:
             self.show_result(str(error), "error")
             return
-        supplied = self.query_one("#agent-approval-digest", Input).value.strip()
-        if supplied != digest:
-            self.show_result(
-                "Approval digest missing or does not match this request.", "warning"
-            )
-            return
+        if self.agent_approval_fingerprint != digest:
+            self.agent_approval_token = ApprovalStore().issue(digest)
+            self.agent_approval_fingerprint = digest
         request = make_request(
             adapter_id="opencode",
             workspace=self.app.workspace,
             prompt=task,
             timeout_seconds=None,
             record_evidence=True,
-            approval_digest=supplied,
+            approval_token=self.agent_approval_token,
         )
+        self.agent_approval_token = None
+        self.agent_approval_fingerprint = None
         self.agent_request_id = request.execution_id
         self.agent_generation += 1
         generation = self.agent_generation

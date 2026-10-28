@@ -48,13 +48,15 @@ OpenCode, and network access remain disabled by default. Start with:
 ```bash
 zeroagent agent adapters
 zeroagent agent validate "Summarize this workspace" --workspace . --record
+zeroagent agent approve "Summarize this workspace" --workspace . --record
 zeroagent agent run "Summarize this workspace" --workspace . --record \
-  --approve-digest <exact-digest-from-validate>
+  --approval-token <single-use-token-from-agent-approve>
 ```
 
 `zeroagent tui` includes **External Agent Control Center** inside Agent Workspace.
 Preview shows adapter, workspace, bounded task, network requirement, timeout policy,
-and approval digest. Paste exact digest before Start. Cancel targets only current
+and request fingerprint. Fingerprint is not credential; explicit Start makes local
+single-use authorization. Cancel targets only current
 in-process coordinator request. CLI cross-process cancellation is not advertised;
 use `Ctrl+C` in owning `agent run` process. Evidence is sanitized, bounded local
 history, not tamper-proof proof. External agents are not sandboxed and interrupted

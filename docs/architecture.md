@@ -12,6 +12,12 @@ engine rejects it unless agent execution, OpenCode, and network access are expli
 enabled. This is not OS sandboxing. Output and evidence are bounded and redacted best
 effort; local evidence is not tamper-proof.
 
+Agent request fingerprints are canonical SHA-256 equality markers, not human identity
+credentials. Interactive CLI approval or explicit TUI Start creates opaque local token
+bound to exact request plus policy state. Tokens expire after five minutes and consume
+once. Coordinator checks token before execution; UI and CLI cannot bypass it. Tokens
+are local application authorization, not cross-user authentication or proof of intent.
+
 ## Current components
 
 Project uses `src/` layout and one small runtime surface:

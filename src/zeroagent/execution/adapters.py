@@ -35,7 +35,7 @@ class AgentAdapter(ABC):
     async def execute(self, request: ExecutionRequest) -> AdapterResult: ...
 
     @abstractmethod
-    async def cancel(self) -> None: ...
+    async def cancel(self, execution_id: str | None = None) -> None: ...
 
 
 class OpenCodeAdapter(AgentAdapter):
@@ -48,7 +48,7 @@ class OpenCodeAdapter(AgentAdapter):
     ) -> None:
         self.executable = executable
         self.max_output_bytes = max_output_bytes
-        self._process: asyncio.subprocess.Process | None = None
+        self._processes: dict[str, asyncio.subprocess.Process] = {}
 
     def _path(self) -> str | None:
         if Path(self.executable).is_absolute():
@@ -103,13 +103,14 @@ class OpenCodeAdapter(AgentAdapter):
         else:
             kwargs["start_new_session"] = True
         try:
-            self._process = await asyncio.create_subprocess_exec(*args, **kwargs)
-            stdout, stderr = await self._process.communicate()
+            process = await asyncio.create_subprocess_exec(*args, **kwargs)
+            self._processes[request.execution_id] = process
+            stdout, stderr = await process.communicate()
             bounded_stdout = self._bound(stdout)
             bounded_stderr = self._bound(stderr)
-            if self._process.returncode != 0:
+            if process.returncode != 0:
                 return AdapterResult(
-                    exit_code=self._process.returncode,
+                    exit_code=process.returncode,
                     stdout=bounded_stdout,
                     stderr=bounded_stderr,
                     error_category="process",
@@ -117,24 +118,24 @@ class OpenCodeAdapter(AgentAdapter):
                 )
             if not self._is_json_event_stream(bounded_stdout):
                 return AdapterResult(
-                    exit_code=self._process.returncode,
+                    exit_code=process.returncode,
                     stdout=bounded_stdout,
                     stderr=bounded_stderr,
                     error_category="malformed_response",
                     error_message="OpenCode returned no valid JSON events",
                 )
             return AdapterResult(
-                exit_code=self._process.returncode,
+                exit_code=process.returncode,
                 stdout=bounded_stdout,
                 stderr=bounded_stderr,
             )
         except OSError as error:
             return AdapterResult(error_category="startup", error_message=str(error))
         except asyncio.CancelledError:
-            await self.cancel()
+            await self.cancel(request.execution_id)
             raise
         finally:
-            self._process = None
+            self._processes.pop(request.execution_id, None)
 
     def _bound(self, data: bytes) -> str:
         clipped = data[: self.max_output_bytes]
@@ -152,9 +153,19 @@ class OpenCodeAdapter(AgentAdapter):
         except json.JSONDecodeError:
             return False
 
-    async def cancel(self) -> None:
-        process = self._process
-        if process is None or process.returncode is not None:
+    async def cancel(self, execution_id: str | None = None) -> None:
+        processes = (
+            [self._processes[execution_id]]
+            if execution_id is not None and execution_id in self._processes
+            else list(self._processes.values())
+            if execution_id is None
+            else []
+        )
+        for process in processes:
+            await self._cancel_process(process)
+
+    async def _cancel_process(self, process: asyncio.subprocess.Process) -> None:
+        if process.returncode is not None:
             return
         if os.name == "nt":
             process.terminate()

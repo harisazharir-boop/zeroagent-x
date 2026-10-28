@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Hardened governed agent approval with opaque, five-minute, single-use local tokens.
+  Request fingerprints remain equality markers, not authorization credentials.
+- Isolated concurrent OpenCode subprocess tracking by execution ID, preventing one
+  execution cancellation from targeting another.
+- Modernized package license metadata for PEP 639 and documented stable interfaces.
+
 - Added controlled Pipeline lifecycle, exact artifact approval, retained reports,
   shutdown settlement, and duplicate-action safety coverage.
 - Clarified Pipeline status, approval versus execution, installation, and security

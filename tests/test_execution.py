@@ -49,7 +49,8 @@ class FakeAdapter(AgentAdapter):
         await asyncio.sleep(self.delay)
         return self.result
 
-    async def cancel(self) -> None:
+    async def cancel(self, execution_id: str | None = None) -> None:
+        del execution_id
         self.cancelled = True
 
 

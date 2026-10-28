@@ -17,10 +17,33 @@ Run `zeroagent --help` for command help. Commands below reflect `src/zeroagent/c
 | `plan` | List, create, validate deterministic plans | No tool execution |
 | `edit` | Validate, preview, propose, apply, recover structured patches | `apply` and `recover` change workspace files |
 | `test` | Create, validate, preview, run controlled test specs | `run` executes approved `pytest` |
+| `agent` | Inspect, approve, run, and inspect governed OpenCode requests | `run` starts approved external process |
 
 ## Workspace behavior
 
 Workspace commands require existing directory paths. ZEROAGENT X resolves selected workspace explicitly and does not choose implicit fallback workspace. Repository analysis skips child symlinks; safe edit and controlled-test operations additionally enforce their own containment rules.
+
+## External agent execution
+
+OpenCode remains disabled unless `agent_execution_enabled`, `opencode_enabled`, and
+`network_enabled` are explicitly enabled. This is application policy, not OS firewall
+or sandbox. OpenCode working directory does not restrict files or network available to
+current OS user.
+
+```bash
+zeroagent agent adapters
+zeroagent agent validate "Summarize this workspace" --workspace .
+zeroagent agent approve "Summarize this workspace" --workspace .
+zeroagent agent run "Summarize this workspace" --workspace . \
+  --approval-token <token-from-agent-approve>
+```
+
+`validate` prints request fingerprint only. Fingerprint is not proof of identity and
+cannot authorize execution. Interactive `approve` requires confirmation and creates
+opaque local token bound to adapter, resolved workspace, prompt, timeout, evidence
+preference, and policy state. Token expires after five minutes and consumes once,
+including failed mismatched use. Noninteractive `run` cannot mint approval. Use
+`Ctrl+C` in owning process for cancellation; cross-process cancellation is unsupported.
 
 ## Analysis, route, run, and proof
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from datetime import UTC, datetime
 from time import monotonic
 
@@ -54,10 +55,12 @@ class ExecutionCoordinator:
         *,
         settings: Settings | None = None,
         storage: LocalStorage | None = None,
+        approval_authorizer: Callable[[ExecutionRequest], bool] | None = None,
     ) -> None:
         self.registry = registry
         self.settings = settings or load_settings()
         self.storage = storage
+        self.approval_authorizer = approval_authorizer
         self._active: dict[str, object] = {}
         self._states: dict[str, list[ExecutionState]] = {}
         self._cancelled: dict[str, str] = {}
@@ -82,7 +85,7 @@ class ExecutionCoordinator:
         self._cancelled[execution_id] = reason
         adapter = self._active.get(execution_id)
         if adapter is not None:
-            await adapter.cancel()  # type: ignore[union-attr]
+            await adapter.cancel(execution_id)  # type: ignore[union-attr]
         if self.state(execution_id) not in TERMINAL_STATES:
             self._move(execution_id, ExecutionState.CANCELLED)
         return True
@@ -118,7 +121,10 @@ class ExecutionCoordinator:
                 "policy_checked",
                 {"adapter": request.adapter_id, "approved": request.approved},
             )
-            if request.approval_required and not request.approved:
+            approved = request.approved
+            if request.approval_required and self.approval_authorizer is not None:
+                approved = self.approval_authorizer(request)
+            if request.approval_required and not approved:
                 self._move(request.execution_id, ExecutionState.AWAITING_APPROVAL)
                 raise ExecutionError("Explicit approval is required")
             self._move(request.execution_id, ExecutionState.READY)
@@ -139,7 +145,7 @@ class ExecutionCoordinator:
                         timeout,
                     )
                 except TimeoutError:
-                    await adapter.cancel()
+                    await adapter.cancel(request.execution_id)
                     self._move(request.execution_id, ExecutionState.TIMED_OUT)
                     error_category = "timeout"
                     error_message = f"Execution exceeded {timeout} seconds"

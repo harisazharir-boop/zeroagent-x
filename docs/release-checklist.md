@@ -49,6 +49,18 @@ This checklist is internal planning aid. **Completion of this checklist does not
 
 ## Final release gate
 
+## Phase 3 hardening evidence
+
+- [x] Approval changed from reusable deterministic digest to opaque, single-use,
+  request- and policy-bound local token with five-minute expiry.
+- [x] Concurrent OpenCode subprocess tracking isolated by execution ID.
+- [x] Stable interface contract documented in `docs/compatibility.md`.
+- [ ] Run final dependency advisory scan with available advisory database; record tool,
+  database timestamp, findings, and limits.
+- [ ] Scan current tracked tree and reachable Git history for credential patterns;
+  separately assess test fixtures and scanner marker false positives.
+- [ ] Record exact Phase 3 SHA and matching Ubuntu/Windows CI run after final changes.
+
 - [ ] Review `SECURITY.md`, `LICENSE`, package metadata, dependencies, and distribution contents.
 - [ ] Review release candidate CI logs and artifacts.
 - [ ] Confirm clean intended Git state and exact release commit.

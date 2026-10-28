@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from zeroagent.execution.models import (
     ExecutionRequest,
 )
 from zeroagent.execution.registry import AdapterRegistry
+from zeroagent.execution.service import ApprovalStore, make_request, request_digest
 
 runner = CliRunner()
 
@@ -36,7 +38,8 @@ class SuccessfulAdapter(AgentAdapter):
         del request
         return AdapterResult(exit_code=0, stdout='{"type":"text","text":"ok"}')
 
-    async def cancel(self) -> None:
+    async def cancel(self, execution_id: str | None = None) -> None:
+        del execution_id
         return None
 
 
@@ -59,42 +62,104 @@ def test_agent_commands_discoverable_and_default_policy_denies(tmp_path: Path) -
     assert "disabled by policy" in denied.output
 
 
-def test_agent_run_requires_request_bound_approval(tmp_path: Path, monkeypatch) -> None:
+def test_agent_validate_returns_fingerprint_not_authorization(tmp_path: Path) -> None:
     from zeroagent.cli import app
 
-    monkeypatch.setattr("zeroagent.cli.make_coordinator", lambda **_: coordinator())
     preview = runner.invoke(
         app, ["agent", "validate", "safe task", "--workspace", str(tmp_path)]
     )
-    digest = json.loads(preview.output)["approval_digest"]
-    stale = runner.invoke(
-        app,
-        [
-            "agent",
-            "run",
-            "changed task",
-            "--workspace",
-            str(tmp_path),
-            "--approve-digest",
-            digest,
-        ],
+    payload = json.loads(preview.output)
+    assert "request_fingerprint" in payload
+    assert "approval_token" not in payload
+
+
+def test_single_use_approval_rejects_changed_request_and_replay(tmp_path: Path) -> None:
+    config = Settings(agent_execution_enabled=True, opencode_enabled=True)
+    store = ApprovalStore(tmp_path / "approvals")
+    engine = ExecutionCoordinator(
+        AdapterRegistry([SuccessfulAdapter()]),
+        settings=config,
+        approval_authorizer=lambda request: store.consume(
+            request.approval_token,
+            request_digest(
+                adapter_id=request.adapter_id,
+                workspace=request.workspace,
+                prompt=request.prompt,
+                timeout_seconds=request.timeout_seconds,
+                record_evidence=request.record_evidence,
+                settings=config,
+            ),
+        ),
     )
-    approved = runner.invoke(
-        app,
-        [
-            "agent",
-            "run",
-            "safe task",
-            "--workspace",
-            str(tmp_path),
-            "--approve-digest",
-            digest,
-        ],
+    fingerprint = request_digest(
+        adapter_id="opencode",
+        workspace=tmp_path,
+        prompt="safe task",
+        timeout_seconds=None,
+        record_evidence=False,
+        settings=config,
     )
-    assert stale.exit_code == 2
-    assert "Explicit approval is required" in stale.output
-    assert approved.exit_code == 0
-    assert json.loads(approved.output)["state"] == "SUCCEEDED"
+    token = store.issue(fingerprint)
+    changed = make_request(
+        adapter_id="opencode",
+        workspace=tmp_path,
+        prompt="changed task",
+        timeout_seconds=None,
+        record_evidence=False,
+        approval_token=token,
+    )
+    assert asyncio.run(engine.execute(changed)).state.value == "FAILED"
+    approved = make_request(
+        adapter_id="opencode",
+        workspace=tmp_path,
+        prompt="safe task",
+        timeout_seconds=None,
+        record_evidence=False,
+        approval_token=token,
+    )
+    assert asyncio.run(engine.execute(approved)).state.value == "FAILED"
+
+
+def test_single_use_approval_allows_only_one_concurrent_request(tmp_path: Path) -> None:
+    config = Settings(agent_execution_enabled=True, opencode_enabled=True)
+    store = ApprovalStore(tmp_path / "approvals")
+    fingerprint = request_digest(
+        adapter_id="opencode",
+        workspace=tmp_path,
+        prompt="safe task",
+        timeout_seconds=None,
+        record_evidence=False,
+        settings=config,
+    )
+    token = store.issue(fingerprint)
+    engine = ExecutionCoordinator(
+        AdapterRegistry([SuccessfulAdapter()]),
+        settings=config,
+        approval_authorizer=lambda request: store.consume(
+            request.approval_token, fingerprint
+        ),
+    )
+
+    async def run() -> list[str]:
+        requests = [
+            make_request(
+                adapter_id="opencode",
+                workspace=tmp_path,
+                prompt="safe task",
+                timeout_seconds=None,
+                record_evidence=False,
+                approval_token=token,
+            )
+            for _ in range(2)
+        ]
+        return [
+            result.state.value
+            for result in await asyncio.gather(
+                *(engine.execute(value) for value in requests)
+            )
+        ]
+
+    assert sorted(asyncio.run(run())) == ["FAILED", "SUCCEEDED"]
 
 
 def test_agent_cancel_does_not_claim_cross_process_support() -> None:

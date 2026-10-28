@@ -18,6 +18,27 @@ long-term maintenance commitment.
 
 ## Current security behavior
 
+### Governed external agents
+
+OpenCode agent execution requires all application policy switches for agent execution,
+OpenCode, and network use. This enforcement occurs in `ExecutionCoordinator`; CLI and
+Textual controls cannot directly launch adapter processes. Network policy authorizes
+ZEROAGENT X use of network-requiring adapters. It does **not** physically prevent an
+unsandboxed external process from opening connections allowed by operating system and
+user account.
+
+Approval uses two separate values. Request fingerprint is SHA-256 equality marker over
+request and relevant policy state; it is not user authentication or authorization.
+Explicit local approval creates opaque token bound to one request, expires after five
+minutes, and consumes once. Failed mismatched use also consumes token. Tokens do not
+prove identity against other local-account users or malware.
+
+Workspace validation resolves selected existing directory before process launch, and
+adapter receives that directory as `cwd`. This prevents implicit fallback workspace;
+it is not filesystem sandboxing and cannot eliminate replacement races without OS
+isolation. External agent output is displayed as bounded untrusted text and is not
+interpreted as ZEROAGENT X instructions.
+
 Current beta candidate has explicit policy-gated local handlers, controlled
 editing, and allowlisted pytest execution. It has no cloud provider, paid-provider fallback,
 arbitrary shell executor, telemetry client, or automatic execution. `zeroagent

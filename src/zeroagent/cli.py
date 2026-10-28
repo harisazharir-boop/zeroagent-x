@@ -47,7 +47,12 @@ from zeroagent.editing import (
     preview as preview_patch,
 )
 from zeroagent.execution.models import ExecutionState
-from zeroagent.execution.service import make_coordinator, make_request, request_digest
+from zeroagent.execution.service import (
+    ApprovalStore,
+    make_coordinator,
+    make_request,
+    request_digest,
+)
 from zeroagent.planning import (
     PlanError,
     create_plan,
@@ -194,7 +199,6 @@ def _agent_request_values(
         prompt=task,
         timeout_seconds=timeout,
         record_evidence=record,
-        approval_digest=None,
     )
 
 
@@ -206,7 +210,7 @@ def agent_validate(
     timeout: Annotated[int | None, typer.Option("--timeout", min=1, max=600)] = None,
     record: Annotated[bool, typer.Option("--record")] = False,
 ) -> None:
-    """Show request-bound approval digest. Validation never starts an adapter."""
+    """Show request fingerprint. It is not an approval credential or token."""
     digest, request = _agent_request_values(adapter, workspace, task, timeout, record)
     coordinator = make_coordinator()
     try:
@@ -218,7 +222,7 @@ def agent_validate(
     typer.echo(
         json.dumps(
             {
-                "approval_digest": digest,
+                "request_fingerprint": digest,
                 "adapter": adapter,
                 "workspace": str(workspace),
                 "network_required": checked.capabilities().requires_network,
@@ -230,13 +234,44 @@ def agent_validate(
     )
 
 
+@agent_app.command("approve")
+def agent_approve(
+    task: Annotated[str, typer.Argument()],
+    workspace: Annotated[Path, typer.Option("--workspace")],
+    adapter: Annotated[str, typer.Option("--adapter")] = "opencode",
+    timeout: Annotated[int | None, typer.Option("--timeout", min=1, max=600)] = None,
+    record: Annotated[bool, typer.Option("--record")] = False,
+) -> None:
+    """Interactively issue one opaque authorization for exact request."""
+    coordinator = make_coordinator()
+    fingerprint, request = _agent_request_values(
+        adapter, workspace, task, timeout, record
+    )
+    try:
+        checked = coordinator.registry.get(adapter)
+        checked.validate(request)
+    except (ValueError, FileNotFoundError) as error:
+        typer.echo(f"Agent approval failed: {error}", err=True)
+        raise typer.Exit(2) from error
+    typer.echo(f"Adapter: {adapter}\nWorkspace: {workspace}\nTask: {task[:300]}")
+    network_required = checked.capabilities().requires_network
+    typer.echo(f"Network required: {network_required}\nEvidence: {record}")
+    if not typer.confirm("Authorize this exact request once?", default=False):
+        typer.echo("Approval rejected.", err=True)
+        raise typer.Exit(2)
+    token = ApprovalStore().issue(fingerprint)
+    typer.echo(
+        json.dumps({"approval_token": token, "expires_in_seconds": 300}, indent=2)
+    )
+
+
 @agent_app.command("run")
 def agent_run(
     task: Annotated[str, typer.Argument()],
     workspace: Annotated[Path, typer.Option("--workspace")],
-    approve_digest: Annotated[
+    approval_token: Annotated[
         str | None,
-        typer.Option("--approve-digest", help="Exact digest from agent validate."),
+        typer.Option("--approval-token", help="Single-use token from agent approve."),
     ] = None,
     adapter: Annotated[str, typer.Option("--adapter")] = "opencode",
     timeout: Annotated[int | None, typer.Option("--timeout", min=1, max=600)] = None,
@@ -250,7 +285,7 @@ def agent_run(
         prompt=task,
         timeout_seconds=timeout,
         record_evidence=record,
-        approval_digest=approve_digest,
+        approval_token=approval_token,
     )
     coordinator = make_coordinator(storage_dir=storage_dir)
     try:
