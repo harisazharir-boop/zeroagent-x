@@ -2,34 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.0.0 - stable release source
 
-- Hardened governed agent approval with opaque, five-minute, single-use local tokens.
-  Request fingerprints remain equality markers, not authorization credentials.
-- Isolated concurrent OpenCode subprocess tracking by execution ID, preventing one
-  execution cancellation from targeting another.
-- Modernized package license metadata for PEP 639 and documented stable interfaces.
+### Features
 
-- Added controlled Pipeline lifecycle, exact artifact approval, retained reports,
-  shutdown settlement, and duplicate-action safety coverage.
-- Clarified Pipeline status, approval versus execution, installation, and security
-  documentation. No release has been published.
-- Redesigned README with approved local branding assets, CI-tested platform scope,
-  architecture overview, and security-boundary summaries.
-- Added CLI usage, active Textual workspace, troubleshooting, and internal
-  release-readiness documentation. No release has been published.
+- Local-first deterministic routing, read-only repository analysis, planning,
+  ProofEngine structural verification, opt-in local history, Textual workspace,
+  controlled editing and pytest workflows, and optional loopback Ollama.
+- Governed OpenCode agent CLI and Textual controls with explicit policy switches,
+  request-bound approval, monitoring, cancellation, and bounded local evidence.
 
-## 0.12.0b1 - beta candidate, unpublished
+### Security
 
-- Prepared first public-beta candidate with local-first deterministic routing,
-  policy-gated local workflows, approval-bound editing and controlled tests.
-- Included Textual workspace, ProofEngine structural checks, opt-in local
-  execution history, and optional loopback-only local AI integration.
-- Validated supported CI matrix on Ubuntu and Windows with Python 3.11–3.13,
-  including isolated fresh-wheel smoke coverage on both platforms.
-- Preserved security limits: no unrestricted autonomous execution, OS-level
-  sandboxing, guaranteed multi-file rollback, tamper-proof records, or semantic
-  correctness guarantee.
+- Approval uses opaque, five-minute, single-use local tokens bound to request and
+  policy state. Request fingerprints are equality markers, not credentials.
+- Concurrent OpenCode subprocess tracking is isolated by execution ID.
+- Package metadata uses PEP 639 Apache-2.0 license declarations.
+
+### Reliability and compatibility
+
+- Deferred Textual HomeScreen initialization and resume work prevent Windows
+  widget-mount races.
+- Stable interface contract is documented in `docs/compatibility.md`.
+
+### Known limitations
+
+- No OS sandboxing, physical network enforcement, transactional multi-file edits,
+  tamper-proof evidence, semantic proof, or automatic cloud-provider fallback.
+- PyPI publication is not part of this release.
 
 ## 0.12.0.dev0 - 2026-10-24
 

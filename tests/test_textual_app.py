@@ -2038,7 +2038,7 @@ async def test_textual_feature_screens_shared_base_and_contracts() -> None:
             assert "›" in breadcrumb
             assert screen.feature_name in breadcrumb
             version = str(screen.query_one(".feature-version", Static).renderable)
-            assert "v0.12.0b1" in version
+            assert "v1.0.0" in version
 
             # Title and description
             assert screen.query_one(".page-title", Static)

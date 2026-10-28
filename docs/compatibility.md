@@ -1,7 +1,6 @@
 # Stable v1 Compatibility Contract
 
-This document states intended stable interfaces for future `1.0.0`. Current package
-version remains unpublished `0.12.0b1`; this is not release announcement.
+This document states stable interfaces for `1.0.0`. It describes source compatibility; publication is governed separately.
 
 ## Supported surface
 
@@ -20,8 +19,7 @@ version remains unpublished `0.12.0b1`; this is not release announcement.
 Stable documented CLI and public models receive deprecation notice in changelog and
 documentation before incompatible future stable removal where practical. Internal
 widgets, private attributes, storage implementation, visual layout, and undocumented
-modules have no compatibility promise. Pre-1.0 versions can change without stable API
-guarantee.
+modules have no compatibility promise. Pre-1.0 versions had no stable API guarantee.
 
 ## Security support and unsupported capabilities
 

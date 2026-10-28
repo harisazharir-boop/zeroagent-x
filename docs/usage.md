@@ -1,6 +1,6 @@
 # Usage and CLI Reference
 
-Run `zeroagent --help` for command help. Commands below reflect `src/zeroagent/cli.py` in beta candidate version `0.12.0b1`.
+Run `zeroagent --help` for command help. Commands below reflect `src/zeroagent/cli.py` in stable version `1.0.0`.
 
 ## Command inventory
 

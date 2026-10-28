@@ -9,10 +9,8 @@ evidence. Do not include secrets or private repository content.
 
 ## Security support status
 
-ZEROAGENT X `0.12.0b1` is an unpublished beta candidate. No public beta
-release line is supported until a maintainer publishes one. After publication,
-the maintainer must identify supported release line(s) and any security-fix
-policy for that beta; historical development and unreleased versions are not
+ZEROAGENT X `1.0.0` is current stable release line. Publication status does not
+change this policy. Historical development and unreleased versions are not
 security-supported releases. This policy does not promise a response time or
 long-term maintenance commitment.
 
@@ -39,7 +37,7 @@ it is not filesystem sandboxing and cannot eliminate replacement races without O
 isolation. External agent output is displayed as bounded untrusted text and is not
 interpreted as ZEROAGENT X instructions.
 
-Current beta candidate has explicit policy-gated local handlers, controlled
+Current stable source has explicit policy-gated local handlers, controlled
 editing, and allowlisted pytest execution. It has no cloud provider, paid-provider fallback,
 arbitrary shell executor, telemetry client, or automatic execution. `zeroagent
 doctor` reads local runtime data only. `zeroagent analyze` reads selected workspace

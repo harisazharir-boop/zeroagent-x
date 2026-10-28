@@ -4,13 +4,13 @@ This checklist is internal planning aid. **Completion of this checklist does not
 
 ## Documentation and product claims
 
-- [x] Candidate `0.12.0b1` README matches implemented commands, UI, security boundaries, and unpublished beta-candidate status.
+- [ ] Stable `1.0.0` README matches implemented commands, UI, security boundaries, and publication status.
 - [ ] README branding assets exist, render through repository-relative links, and have meaningful alternative text.
-- [x] Candidate installation instructions match Python `>=3.11`, validated Python 3.11–3.13 matrix, and unpublished distribution status.
+- [ ] Stable installation instructions match Python `>=3.11`, validated Python 3.11–3.13 matrix, and publication status.
 - [ ] CLI commands, options, side effects, and exit-code descriptions checked against live help and source.
 - [ ] Active Textual UI behavior checked; legacy `zeroagent.tui` support status declared.
 - [ ] Security disclosures cover approval binding, stale rejection, non-atomic edits, recovery limits, proof limits, redaction limits, and unsandboxed test execution.
-- [x] Changelog has unpublished `0.12.0b1` beta-candidate entry without publication date.
+- [ ] Changelog has stable `1.0.0` entry with accurate release status.
 
 ## Pending metadata and security UX work
 
@@ -40,12 +40,12 @@ This checklist is internal planning aid. **Completion of this checklist does not
 - [ ] Review version-coupled package scanner expectations in `scripts/verify_package.py` when version changes.
 - [ ] **Pending:** Review GitHub Actions Node.js runtime warnings for `checkout`, `setup-python`, and `upload-artifact` under controlled maintenance task.
 
-### 0.12.0b1 candidate evidence
+### 1.0.0 release evidence
 
-- [x] Candidate version updated in package metadata, runtime version, version-coupled package scanner, tests, and Windows fresh-wheel metadata assertion.
-- [x] Candidate changelog, README, installation, usage, and security-support language prepared; candidate remains unpublished.
-- [ ] Record exact candidate SHA, exact-CI run, artifact ID, individual SHA-256 checksums, and artifact audit after final candidate validation.
-- [ ] Complete candidate local quality, package, isolated-install, dependency, security-reporting, exact-CI, and artifact-audit gates.
+- [ ] Version updated in package metadata, runtime version, package scanner, tests, and Windows fresh-wheel metadata assertion.
+- [ ] Changelog, README, installation, usage, and security-support language prepared for stable source; GitHub publication remains pending authorization.
+- [ ] Record exact release SHA, exact-CI run, artifact ID, individual SHA-256 checksums, and artifact audit after final validation.
+- [ ] Complete local quality, package, isolated-install, dependency, security-reporting, exact-CI, and artifact-audit gates.
 
 ## Final release gate
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import tarfile
+import tomllib
 import zipfile
 from pathlib import Path
 
@@ -12,6 +13,13 @@ SUSPICIOUS_FILENAMES = (".env", "id_rsa", "id_ed25519", ".pem", ".key", "credent
 SECRET_MARKERS = (b"-----BEGIN PRIVATE KEY-----", b"AKIA")
 MAX_MEMBER_SIZE = 5 * 1024 * 1024
 KNOWN_REDACTION_SOURCE = "zeroagent/blackbox/redaction.py"
+
+
+def project_version() -> str:
+    """Read sole package version declaration from project metadata."""
+    project_file = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    with project_file.open("rb") as file:
+        return tomllib.load(file)["project"]["version"]
 
 
 def check_paths(names: list[str], label: str) -> None:
@@ -58,6 +66,8 @@ def check_content(
 
 
 def check_wheel(wheel: Path) -> None:
+    version = project_version()
+    dist_info = f"zeroagent-{version}.dist-info"
     with zipfile.ZipFile(wheel) as archive:
         names = archive.namelist()
         check_paths(names, "wheel")
@@ -66,7 +76,7 @@ def check_wheel(wheel: Path) -> None:
             for name in names
             if name.endswith(".dist-info/METADATA")
         }
-        expected_dist_info = "zeroagent-0.12.0b1.dist-info"
+        expected_dist_info = dist_info
         if dist_infos != {expected_dist_info}:
             raise SystemExit(
                 f"wheel distribution metadata is invalid: {sorted(dist_infos)}"
@@ -80,13 +90,13 @@ def check_wheel(wheel: Path) -> None:
             "zeroagent/cli.py",
             "zeroagent/textual_app.py",
             "zeroagent/assets/logo.png",
-            "zeroagent-0.12.0b1.dist-info/METADATA",
-            "zeroagent-0.12.0b1.dist-info/entry_points.txt",
+            f"{dist_info}/METADATA",
+            f"{dist_info}/entry_points.txt",
         }
         missing = required - set(names)
         if missing:
             raise SystemExit(f"wheel missing required members: {sorted(missing)}")
-        entry_points = archive.read("zeroagent-0.12.0b1.dist-info/entry_points.txt")
+        entry_points = archive.read(f"{dist_info}/entry_points.txt")
         if b"zeroagent = zeroagent.cli:main" not in entry_points:
             raise SystemExit("wheel console entry point is invalid")
 

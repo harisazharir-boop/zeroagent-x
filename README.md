@@ -11,8 +11,8 @@
 <p align="center">
   <a href="https://github.com/harisazharir-boop/zeroagent-x/actions/workflows/ci.yml"><img src="https://github.com/harisazharir-boop/zeroagent-x/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-00E5FF" alt="CI-tested Python versions 3.11, 3.12, and 3.13">
-  <img src="https://img.shields.io/badge/version-0.12.0b1-8B5CF6" alt="Beta candidate version 0.12.0b1">
-  <img src="https://img.shields.io/badge/status-beta%20candidate-00E6A8" alt="Unpublished beta candidate">
+  <img src="https://img.shields.io/badge/version-1.0.0-8B5CF6" alt="Stable version 1.0.0">
+  <img src="https://img.shields.io/badge/status-stable-00E6A8" alt="Stable release source">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-080D18" alt="Apache-2.0 license"></a>
 </p>
 
@@ -21,7 +21,7 @@
   <a href="#security-by-design">Security</a> · <a href="#platform-support">Platform Support</a> · <a href="#documentation">Documentation</a> · <a href="#contributing">Contributing</a>
 </p>
 
-> **Unpublished beta candidate.** ZEROAGENT X `0.12.0b1` is prepared for release review, not published. It does not promise semantic code correctness, complete security, or unrestricted autonomous coding.
+> **Stable release source.** ZEROAGENT X `1.0.0` is release-ready. GitHub publication still requires owner authorization. It does not promise semantic code correctness, complete security, or unrestricted autonomous coding.
 
 ## Overview
 
@@ -140,7 +140,7 @@ python -m venv .venv
 .venv\Scripts\zeroagent.exe --help
 ```
 
-Use `python -m zeroagent --help` if console-script lookup fails. Project is not published to PyPI; commands above require source checkout. Full paths, activation, and tested-install scope: [installation guide](docs/installation.md).
+Use `python -m zeroagent --help` if console-script lookup fails. Project is not published to PyPI; install from source checkout or verified GitHub Release artifact after publication. Full paths, activation, and tested-install scope: [installation guide](docs/installation.md).
 
 ## CLI
 
