@@ -6,7 +6,7 @@
 approval boundaries, lifecycle state, timeout, cancellation, normalized results, and
 optional local BlackBox evidence. Adapters are explicitly registered; dynamic plugin
 discovery is unsupported. The first adapter is `opencode`, which invokes an explicitly
-configured local OpenCode executable through `opencode run --format json` without a
+configured local OpenCode executable through `opencode run --standalone --format json` without a
 shell or `--auto`. OpenCode may require configured providers or network access, so the
 engine rejects it unless agent execution, OpenCode, and network access are explicitly
 enabled. This is not OS sandboxing. Output and evidence are bounded and redacted best

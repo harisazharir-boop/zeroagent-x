@@ -28,7 +28,8 @@ transmit repository content.
 The experimental explicit agent-execution engine remains disabled by default. Its
 OpenCode adapter requires an explicit executable, explicit request approval, and
 explicit network enablement because OpenCode may use configured providers. It does not
-pass `--auto`, does not invoke a shell, and pins subprocess working directory to an
+pass `--auto`, starts a private OpenCode server with `--standalone`, does not invoke a
+shell, and pins subprocess working directory to an
 explicitly validated workspace. This is not OS sandboxing; provider configuration and
 any resulting network use remain outside the adapter's security authority.
 

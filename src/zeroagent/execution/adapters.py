@@ -80,11 +80,13 @@ class OpenCodeAdapter(AgentAdapter):
                 error_category="missing_executable",
                 error_message="OpenCode unavailable",
             )
-        # OpenCode v2.1.4 help confirms `run --format json <message...>`.
+        # OpenCode v2.1.4 help confirms `run --standalone --format json <message...>`.
+        # Standalone avoids an uncontrolled shared background server/session.
         # `cwd` pins OpenCode process to explicitly validated workspace.
         args = [
             executable,
             "run",
+            "--standalone",
             "--format",
             "json",
             request.prompt,
