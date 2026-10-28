@@ -39,6 +39,27 @@ No paid API is required by built-in capabilities. Local CPU, storage, hardware, 
 
 ## Features
 
+### External agent execution
+
+`zeroagent agent` exposes registered external adapters, request validation, explicit
+request-bound approval, execution, and sanitized local evidence. Agent execution,
+OpenCode, and network access remain disabled by default. Start with:
+
+```bash
+zeroagent agent adapters
+zeroagent agent validate "Summarize this workspace" --workspace . --record
+zeroagent agent run "Summarize this workspace" --workspace . --record \
+  --approve-digest <exact-digest-from-validate>
+```
+
+`zeroagent tui` includes **External Agent Control Center** inside Agent Workspace.
+Preview shows adapter, workspace, bounded task, network requirement, timeout policy,
+and approval digest. Paste exact digest before Start. Cancel targets only current
+in-process coordinator request. CLI cross-process cancellation is not advertised;
+use `Ctrl+C` in owning `agent run` process. Evidence is sanitized, bounded local
+history, not tamper-proof proof. External agents are not sandboxed and interrupted
+operations may have changed workspace files.
+
 |  |  |
 |:---|:---|
 | **◇ Deterministic Routing**<br><sub>Fixed task classification and static local capabilities. `route` decides; `run` separately invokes only permitted registered handlers.</sub> | **◆ ProofEngine**<br><sub>Checks routing and artifact structure with explicit status. It does not prove source safety or semantic correctness.</sub> |

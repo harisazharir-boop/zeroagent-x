@@ -43,6 +43,8 @@ from zeroagent.editing import (
 from zeroagent.editing import (
     preview as preview_patch,
 )
+from zeroagent.execution.models import ExecutionResult, ExecutionState
+from zeroagent.execution.service import make_coordinator, make_request, request_digest
 from zeroagent.pipeline import PipelineEngine, PipelineError, PipelineState
 from zeroagent.planning import TaskPlan, create_plan, validate_plan
 from zeroagent.proof.engine import verify_execution
@@ -1481,6 +1483,10 @@ class AgentScreen(FeatureScreen):
         self.route_workspace: Path | None = None
         self.execution: tuple[RoutingDecision, object] | None = None
         self.running = False
+        self.agent_execution: ExecutionResult | None = None
+        self.agent_request_id: str | None = None
+        self.agent_coordinator = make_coordinator()
+        self.agent_generation = 0
 
     def compose_info_rows(self) -> list[tuple[str, ...]]:
         return [("WORKSPACE", str(self.app.workspace))]
@@ -1503,6 +1509,122 @@ class AgentScreen(FeatureScreen):
                 classes="btn-secondary",
                 disabled=True,
             )
+        yield Static("EXTERNAL AGENT CONTROL CENTER", classes="output-label")
+        yield Input("", placeholder="Harmless agent task", id="agent-execution-task")
+        yield Input(
+            "", placeholder="Approval digest from Preview", id="agent-approval-digest"
+        )
+        with Horizontal(classes="action-row"):
+            yield Button(
+                "Preview Approval", id="btn-agent-preview", classes="btn-secondary"
+            )
+            yield Button(
+                "Start Approved Agent", id="btn-agent-start", classes="btn-primary"
+            )
+            yield Button(
+                "Cancel Agent",
+                id="btn-agent-cancel",
+                classes="btn-secondary",
+                disabled=True,
+            )
+
+    def _external_values(self) -> tuple[str, str]:
+        task = self.query_one("#agent-execution-task", Input).value.strip()
+        if not task:
+            raise ValueError("Enter external agent task first.")
+        if len(task) > 8_000:
+            raise ValueError("Task exceeds 8000-character limit.")
+        digest = request_digest(
+            adapter_id="opencode",
+            workspace=self.app.workspace,
+            prompt=task,
+            timeout_seconds=None,
+            record_evidence=True,
+        )
+        return task, digest
+
+    @on(Button.Pressed, "#btn-agent-preview")
+    def preview_external_agent(self) -> None:
+        try:
+            task, digest = self._external_values()
+        except ValueError as error:
+            self.show_result(str(error), "error")
+            return
+        settings = self.agent_coordinator.settings
+        adapter = self.agent_coordinator.registry.get("opencode")
+        availability = "available" if adapter.available() else "unavailable"
+        policy_enabled = (
+            settings.agent_execution_enabled
+            and settings.opencode_enabled
+            and settings.network_enabled
+        )
+        self.show_result(
+            "APPROVAL REQUIRED\n\n"
+            f"Adapter: opencode ({availability})\n"
+            f"Workspace: {escape(str(self.app.workspace))}\n"
+            f"Task: {escape(_bound_text(task, 300))}\n"
+            f"Network required: {adapter.capabilities().requires_network}\n"
+            f"Policy enabled: {policy_enabled}\n"
+            "Evidence: enabled\n"
+            f"Approval digest: {digest}\n\nPaste exact digest to approve this request.",
+            "approval",
+        )
+
+    @on(Button.Pressed, "#btn-agent-start")
+    async def start_external_agent(self) -> None:
+        if self.agent_request_id is not None:
+            self.show_result("An agent execution is already active.", "warning")
+            return
+        try:
+            task, digest = self._external_values()
+        except ValueError as error:
+            self.show_result(str(error), "error")
+            return
+        supplied = self.query_one("#agent-approval-digest", Input).value.strip()
+        if supplied != digest:
+            self.show_result(
+                "Approval digest missing or does not match this request.", "warning"
+            )
+            return
+        request = make_request(
+            adapter_id="opencode",
+            workspace=self.app.workspace,
+            prompt=task,
+            timeout_seconds=None,
+            record_evidence=True,
+            approval_digest=supplied,
+        )
+        self.agent_request_id = request.execution_id
+        self.agent_generation += 1
+        generation = self.agent_generation
+        self.query_one("#btn-agent-start", Button).disabled = True
+        self.query_one("#btn-agent-cancel", Button).disabled = False
+        self.show_result(f"Agent running: {request.execution_id}\nState: RUNNING")
+        result = await self.agent_coordinator.execute(request)
+        if generation != self.agent_generation:
+            return
+        self.agent_execution = result
+        self.agent_request_id = None
+        self.query_one("#btn-agent-start", Button).disabled = False
+        self.query_one("#btn-agent-cancel", Button).disabled = True
+        self.show_result(
+            f"Execution ID: {result.execution_id}\nAdapter: {result.adapter_id}\n"
+            f"State: {result.state.value}\nDuration: {result.duration_seconds:.2f}s\n"
+            f"Error: {escape(result.error_category or '-')}\n"
+            f"Evidence: {result.evidence_id or '-'}\n"
+            f"Output:\n{escape(_bound_text(result.output_summary, 2_000))}",
+            "result" if result.state == ExecutionState.SUCCEEDED else "error",
+        )
+
+    @on(Button.Pressed, "#btn-agent-cancel")
+    async def cancel_external_agent(self) -> None:
+        if not self.agent_request_id:
+            self.show_result("No active external agent execution.", "warning")
+            return
+        await self.agent_coordinator.cancel(self.agent_request_id, "Cancelled from TUI")
+        self.show_result(
+            "Cancellation requested. Waiting for process cleanup.", "warning"
+        )
 
     def task_text(self) -> str | None:
         value = self.query_one("#agent-task", Input).value

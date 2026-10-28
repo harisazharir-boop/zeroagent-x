@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -45,6 +46,8 @@ from zeroagent.editing import (
 from zeroagent.editing import (
     preview as preview_patch,
 )
+from zeroagent.execution.models import ExecutionState
+from zeroagent.execution.service import make_coordinator, make_request, request_digest
 from zeroagent.planning import (
     PlanError,
     create_plan,
@@ -111,7 +114,199 @@ test_app = typer.Typer(
     add_completion=False,
 )
 app.add_typer(test_app)
+agent_app = typer.Typer(
+    name="agent",
+    help="Approval-bound external agent execution through ExecutionCoordinator.",
+    no_args_is_help=True,
+    add_completion=False,
+)
+app.add_typer(agent_app)
 console = Console()
+
+
+def _agent_payload(result: object) -> str:
+    return json.dumps(_json_value(result), indent=2, sort_keys=True)
+
+
+@agent_app.command("adapters")
+def agent_adapters(
+    output_format: Annotated[str, typer.Option("--format")] = "text",
+) -> None:
+    """List registered adapters and local executable availability; never executes."""
+    coordinator = make_coordinator()
+    rows = []
+    for identifier in coordinator.registry.identifiers():
+        adapter = coordinator.registry.get(identifier)
+        rows.append(
+            {
+                "identifier": identifier,
+                "available": adapter.available(),
+                "capabilities": sorted(adapter.capabilities().capabilities),
+                "requires_network": adapter.capabilities().requires_network,
+            }
+        )
+    if output_format == "json":
+        typer.echo(json.dumps(rows, indent=2))
+        return
+    for row in rows:
+        typer.echo(
+            f"{row['identifier']}: {'available' if row['available'] else 'unavailable'}"
+        )
+
+
+@agent_app.command("config")
+def agent_config(
+    output_format: Annotated[str, typer.Option("--format")] = "text",
+) -> None:
+    """Show execution policy; credentials and provider config stay hidden."""
+    settings = load_settings()
+    value = {
+        "agent_execution_enabled": settings.agent_execution_enabled,
+        "opencode_enabled": settings.opencode_enabled,
+        "network_enabled": settings.network_enabled,
+        "timeout_seconds": settings.agent_execution_timeout_seconds,
+        "max_output_bytes": settings.agent_execution_max_output_bytes,
+    }
+    typer.echo(
+        json.dumps(value, indent=2)
+        if output_format == "json"
+        else "\n".join(f"{k}: {v}" for k, v in value.items())
+    )
+
+
+def _agent_request_values(
+    adapter: str,
+    workspace: Path,
+    task: str,
+    timeout: int | None,
+    record: bool,
+) -> tuple[str, object]:
+    digest = request_digest(
+        adapter_id=adapter,
+        workspace=workspace,
+        prompt=task,
+        timeout_seconds=timeout,
+        record_evidence=record,
+    )
+    return digest, make_request(
+        adapter_id=adapter,
+        workspace=workspace,
+        prompt=task,
+        timeout_seconds=timeout,
+        record_evidence=record,
+        approval_digest=None,
+    )
+
+
+@agent_app.command("validate")
+def agent_validate(
+    task: Annotated[str, typer.Argument()],
+    workspace: Annotated[Path, typer.Option("--workspace")],
+    adapter: Annotated[str, typer.Option("--adapter")] = "opencode",
+    timeout: Annotated[int | None, typer.Option("--timeout", min=1, max=600)] = None,
+    record: Annotated[bool, typer.Option("--record")] = False,
+) -> None:
+    """Show request-bound approval digest. Validation never starts an adapter."""
+    digest, request = _agent_request_values(adapter, workspace, task, timeout, record)
+    coordinator = make_coordinator()
+    try:
+        checked = coordinator.registry.get(adapter)
+        checked.validate(request)
+    except (ValueError, FileNotFoundError) as error:
+        typer.echo(f"Agent validation failed: {error}", err=True)
+        raise typer.Exit(2) from error
+    typer.echo(
+        json.dumps(
+            {
+                "approval_digest": digest,
+                "adapter": adapter,
+                "workspace": str(workspace),
+                "network_required": checked.capabilities().requires_network,
+                "record_evidence": record,
+                "timeout_seconds": timeout,
+            },
+            indent=2,
+        )
+    )
+
+
+@agent_app.command("run")
+def agent_run(
+    task: Annotated[str, typer.Argument()],
+    workspace: Annotated[Path, typer.Option("--workspace")],
+    approve_digest: Annotated[
+        str | None,
+        typer.Option("--approve-digest", help="Exact digest from agent validate."),
+    ] = None,
+    adapter: Annotated[str, typer.Option("--adapter")] = "opencode",
+    timeout: Annotated[int | None, typer.Option("--timeout", min=1, max=600)] = None,
+    record: Annotated[bool, typer.Option("--record")] = False,
+    storage_dir: Annotated[Path | None, typer.Option("--storage-dir")] = None,
+) -> None:
+    """Run one explicit approved request. Ctrl+C requests bounded adapter cleanup."""
+    request = make_request(
+        adapter_id=adapter,
+        workspace=workspace,
+        prompt=task,
+        timeout_seconds=timeout,
+        record_evidence=record,
+        approval_digest=approve_digest,
+    )
+    coordinator = make_coordinator(storage_dir=storage_dir)
+    try:
+        result = asyncio.run(coordinator.execute(request))
+    except KeyboardInterrupt:
+        typer.echo("Cancellation requested before execution completed.", err=True)
+        raise typer.Exit(130) from None
+    typer.echo(_agent_payload(result))
+    if result.state != ExecutionState.SUCCEEDED:
+        raise typer.Exit(2)
+
+
+@agent_app.command("history")
+def agent_history(
+    limit: Annotated[int, typer.Option(min=1, max=100)] = 20,
+    storage_dir: Annotated[Path | None, typer.Option("--storage-dir")] = None,
+) -> None:
+    """List sanitized recorded agent executions."""
+    records = load_history(make_coordinator(storage_dir=storage_dir).storage, limit)
+    typer.echo(
+        json.dumps([record.model_dump(mode="json") for record in records], indent=2)
+    )
+
+
+@agent_app.command("evidence")
+def agent_evidence(
+    execution_id: Annotated[str, typer.Argument()],
+    storage_dir: Annotated[Path | None, typer.Option("--storage-dir")] = None,
+) -> None:
+    """Inspect sanitized evidence by ID; this command never retries work."""
+    try:
+        record = make_coordinator(storage_dir=storage_dir).storage.load(execution_id)
+    except StorageError as error:
+        typer.echo(f"Evidence failed: {error}", err=True)
+        raise typer.Exit(2) from error
+    typer.echo(record.model_dump_json(indent=2))
+
+
+@agent_app.command("status")
+def agent_status(
+    execution_id: Annotated[str, typer.Argument(help="Recorded evidence ID.")],
+    storage_dir: Annotated[Path | None, typer.Option("--storage-dir")] = None,
+) -> None:
+    """Show terminal recorded status; active cross-process status is unsupported."""
+    agent_evidence(execution_id, storage_dir)
+
+
+@agent_app.command("cancel")
+def agent_cancel(execution_id: Annotated[str, typer.Argument()]) -> None:
+    """Explain CLI cancellation boundary; use Ctrl+C in owning `agent run` process."""
+    typer.echo(
+        f"Cannot cancel {execution_id}: cross-process cancellation is unsupported. "
+        "Use Ctrl+C in process that started agent run.",
+        err=True,
+    )
+    raise typer.Exit(2)
 
 
 def version_callback(value: bool) -> None:
