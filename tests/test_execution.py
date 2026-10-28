@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import sys
 from pathlib import Path
 
 import pytest
@@ -142,19 +141,43 @@ async def test_adapter_failure_exception_and_output_limit(tmp_path: Path) -> Non
 
 
 @pytest.mark.asyncio
-async def test_opencode_adapter_missing_executable_and_safe_fake_process(
+def fake_opencode(tmp_path: Path, body: str) -> Path:
+    script = tmp_path / "fake_opencode"
+    script.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+    script.chmod(0o700)
+    return script
+
+
+@pytest.mark.asyncio
+async def test_opencode_adapter_missing_executable_and_valid_json_stream(
     tmp_path: Path,
 ) -> None:
     missing = OpenCodeAdapter(str(tmp_path / "missing"))
     assert not missing.available()
     with pytest.raises(FileNotFoundError):
         missing.validate(request(tmp_path))
-    script = tmp_path / "fake_opencode.py"
-    script.write_text(
-        "import sys; print('ok'); print('err', file=sys.stderr)", encoding="utf-8"
+    script = fake_opencode(
+        tmp_path,
+        'printf \'%s\\n\' \'{"type":"step_start"}\' \'{"type":"text","text":"ok"}\'',
     )
-    adapter = OpenCodeAdapter(sys.executable, max_output_bytes=10)
-    # Python cannot support documented OpenCode invocation; startup then fails.
+    adapter = OpenCodeAdapter(str(script), max_output_bytes=1_024)
     response = await adapter.execute(request(tmp_path))
+    assert response.exit_code == 0
+    assert response.error_category is None
+
+
+@pytest.mark.asyncio
+async def test_opencode_adapter_rejects_malformed_json_and_cleans_hanging_process(
+    tmp_path: Path,
+) -> None:
+    malformed = OpenCodeAdapter(str(fake_opencode(tmp_path, "printf 'not json\\n'")))
+    response = await malformed.execute(request(tmp_path))
+    assert response.error_category == "malformed_response"
+
+    hanging = OpenCodeAdapter(str(fake_opencode(tmp_path, "sleep 60")))
+    task = asyncio.create_task(hanging.execute(request(tmp_path)))
+    await asyncio.sleep(0.05)
+    await hanging.cancel()
+    response = await task
     assert response.exit_code != 0
-    assert len(response.stderr) <= 29
+    assert response.error_category == "process"

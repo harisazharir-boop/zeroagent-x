@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shutil
 import signal
@@ -102,10 +103,28 @@ class OpenCodeAdapter(AgentAdapter):
         try:
             self._process = await asyncio.create_subprocess_exec(*args, **kwargs)
             stdout, stderr = await self._process.communicate()
+            bounded_stdout = self._bound(stdout)
+            bounded_stderr = self._bound(stderr)
+            if self._process.returncode != 0:
+                return AdapterResult(
+                    exit_code=self._process.returncode,
+                    stdout=bounded_stdout,
+                    stderr=bounded_stderr,
+                    error_category="process",
+                    error_message="OpenCode exited unsuccessfully",
+                )
+            if not self._is_json_event_stream(bounded_stdout):
+                return AdapterResult(
+                    exit_code=self._process.returncode,
+                    stdout=bounded_stdout,
+                    stderr=bounded_stderr,
+                    error_category="malformed_response",
+                    error_message="OpenCode returned no valid JSON events",
+                )
             return AdapterResult(
                 exit_code=self._process.returncode,
-                stdout=self._bound(stdout),
-                stderr=self._bound(stderr),
+                stdout=bounded_stdout,
+                stderr=bounded_stderr,
             )
         except OSError as error:
             return AdapterResult(error_category="startup", error_message=str(error))
@@ -119,6 +138,17 @@ class OpenCodeAdapter(AgentAdapter):
         clipped = data[: self.max_output_bytes]
         suffix = "\n[output truncated]" if len(data) > len(clipped) else ""
         return clipped.decode("utf-8", errors="replace") + suffix
+
+    @staticmethod
+    def _is_json_event_stream(output: str) -> bool:
+        """Require nonempty JSON-object lines from documented `--format json` mode."""
+        lines = output.splitlines()
+        if not lines or output.endswith("[output truncated]"):
+            return False
+        try:
+            return all(isinstance(json.loads(line), dict) for line in lines)
+        except json.JSONDecodeError:
+            return False
 
     async def cancel(self) -> None:
         process = self._process

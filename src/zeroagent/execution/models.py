@@ -74,6 +74,7 @@ class AdapterResult(ExecutionModel):
         Literal[
             "missing_executable",
             "unsupported_invocation",
+            "malformed_response",
             "startup",
             "adapter",
             "process",
