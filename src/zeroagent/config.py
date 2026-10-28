@@ -17,6 +17,13 @@ class Settings(BaseModel):
     cloud_providers_enabled: bool = False
     paid_api_providers_enabled: bool = False
     shell_command_execution_enabled: bool = False
+    agent_execution_enabled: bool = False
+    opencode_enabled: bool = False
+    opencode_executable: str | None = None
+    agent_execution_timeout_seconds: int = Field(default=60, ge=1, le=600)
+    agent_execution_max_output_bytes: int = Field(
+        default=64_000, ge=1_024, le=1_000_000
+    )
     require_explicit_destructive_action_authorization: bool = True
     analysis_max_files: int = Field(default=10_000, ge=1)
     analysis_max_file_size_bytes: int = Field(default=5_000_000, ge=1)

@@ -25,6 +25,13 @@ doctor` reads local runtime data only. `zeroagent analyze` reads selected worksp
 metadata and supported manifest text; it does not execute, import, install, or
 transmit repository content.
 
+The experimental explicit agent-execution engine remains disabled by default. Its
+OpenCode adapter requires an explicit executable, explicit request approval, and
+explicit network enablement because OpenCode may use configured providers. It does not
+pass `--auto`, does not invoke a shell, and pins subprocess working directory to an
+explicitly validated workspace. This is not OS sandboxing; provider configuration and
+any resulting network use remain outside the adapter's security authority.
+
 Typed defaults disable telemetry, network access, cloud providers, paid API
 providers, and shell-command execution. Unknown configuration fields are
 rejected. These defaults are tested.
