@@ -105,9 +105,9 @@ class OpenCodeAdapter(AgentAdapter):
         try:
             process = await asyncio.create_subprocess_exec(*args, **kwargs)
             self._processes[request.execution_id] = process
-            stdout, stderr = await process.communicate()
-            bounded_stdout = self._bound(stdout)
-            bounded_stderr = self._bound(stderr)
+            stdout, stderr = await self._capture_output(process)
+            bounded_stdout = self._bound(*stdout)
+            bounded_stderr = self._bound(*stderr)
             if process.returncode != 0:
                 return AdapterResult(
                     exit_code=process.returncode,
@@ -137,10 +137,97 @@ class OpenCodeAdapter(AgentAdapter):
         finally:
             self._processes.pop(request.execution_id, None)
 
-    def _bound(self, data: bytes) -> str:
-        clipped = data[: self.max_output_bytes]
-        suffix = "\n[output truncated]" if len(data) > len(clipped) else ""
-        return clipped.decode("utf-8", errors="replace") + suffix
+    async def _capture_output(
+        self, process: asyncio.subprocess.Process
+    ) -> tuple[tuple[bytes, bool], tuple[bytes, bool]]:
+        """Drain both pipes while retaining at most one configured limit per stream."""
+        assert process.stdout is not None
+        assert process.stderr is not None
+        stdout_task = asyncio.create_task(self._drain_bounded(process.stdout))
+        stderr_task = asyncio.create_task(self._drain_bounded(process.stderr))
+        wait_task = asyncio.create_task(process.wait())
+        readers = (stdout_task, stderr_task)
+        try:
+            done, _ = await asyncio.wait(
+                {wait_task, *readers}, return_when=asyncio.FIRST_EXCEPTION
+            )
+            for task in done:
+                if task in readers and not task.cancelled():
+                    exception = task.exception()
+                    if exception is not None:
+                        await self._cancel_process(process)
+                        raise exception
+            await wait_task
+            stdout, stderr = await asyncio.gather(*readers)
+            return stdout, stderr
+        except asyncio.CancelledError:
+            await self._cleanup_capture(process, readers, wait_task)
+            raise
+        except Exception:
+            await self._cleanup_capture(process, readers, wait_task)
+            raise
+        finally:
+            if process.returncode is None or any(not task.done() for task in readers):
+                await self._cleanup_capture(process, readers, wait_task)
+
+    async def _drain_bounded(self, stream: asyncio.StreamReader) -> tuple[bytes, bool]:
+        retained = bytearray()
+        truncated = False
+        while chunk := await stream.read(64 * 1024):
+            remaining = self.max_output_bytes - len(retained)
+            if remaining > 0:
+                retained.extend(chunk[:remaining])
+            if len(chunk) > max(remaining, 0):
+                truncated = True
+        return bytes(retained), truncated
+
+    async def _cleanup_capture(
+        self,
+        process: asyncio.subprocess.Process,
+        readers: tuple[asyncio.Task[tuple[bytes, bool]], ...],
+        wait_task: asyncio.Task[int],
+    ) -> None:
+        """Terminate process, then settle readers without masking caller failure."""
+        if process.returncode is None:
+            await self._cancel_process(process)
+        pending = [task for task in readers if not task.done()]
+        if pending:
+            await self._settle_readers(pending)
+        if not wait_task.done():
+            wait_task.cancel()
+            await asyncio.gather(wait_task, return_exceptions=True)
+
+    async def _settle_readers(
+        self, readers: list[asyncio.Task[tuple[bytes, bool]]]
+    ) -> None:
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(*readers, return_exceptions=True), timeout=3
+            )
+        except TimeoutError:
+            for task in readers:
+                task.cancel()
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*readers, return_exceptions=True), timeout=3
+                )
+            except TimeoutError:
+                return
+        except asyncio.CancelledError:
+            for task in readers:
+                task.cancel()
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*readers, return_exceptions=True), timeout=3
+                )
+            except TimeoutError:
+                pass
+            raise
+
+    @staticmethod
+    def _bound(data: bytes, truncated: bool) -> str:
+        suffix = "\n[output truncated]" if truncated else ""
+        return data.decode("utf-8", errors="replace") + suffix
 
     @staticmethod
     def _is_json_event_stream(output: str) -> bool:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -158,6 +159,49 @@ def fake_command(posix: str, windows: str) -> str:
     return windows if os.name == "nt" else posix
 
 
+def fake_opencode_python(tmp_path: Path, body: str) -> Path:
+    program = tmp_path / "fake_opencode.py"
+    program.write_text(body, encoding="utf-8")
+    if os.name == "nt":
+        script = tmp_path / "fake_opencode.cmd"
+        script.write_text(
+            f'@echo off\r\n"{sys.executable}" "%~dp0{program.name}" %*\r\n',
+            encoding="utf-8",
+        )
+    else:
+        script = tmp_path / "fake_opencode"
+        script.write_text(
+            "#!/bin/sh\n"
+            f'exec "{sys.executable}" "$(dirname "$0")/{program.name}" "$@"\n',
+            encoding="utf-8",
+            newline="\n",
+        )
+        script.chmod(0o700)
+    return script
+
+
+def output_writer(*, exit_code: int = 0, continuous: bool = False) -> str:
+    loop = "while True:" if continuous else "for _ in range(32):"
+    ending = "" if continuous else f"\nraise SystemExit({exit_code})"
+    return f"""import sys
+chunk = b"x" * 4096
+{loop}
+    sys.stdout.buffer.write(chunk)
+    sys.stdout.buffer.flush()
+    sys.stderr.buffer.write(chunk)
+    sys.stderr.buffer.flush(){ending}
+"""
+
+
+def stream_with(*chunks: bytes, eof: bool = True) -> asyncio.StreamReader:
+    stream = asyncio.StreamReader()
+    for chunk in chunks:
+        stream.feed_data(chunk)
+    if eof:
+        stream.feed_eof()
+    return stream
+
+
 @pytest.mark.asyncio
 async def test_opencode_adapter_missing_executable_and_valid_json_stream(
     tmp_path: Path,
@@ -208,3 +252,183 @@ async def test_opencode_adapter_rejects_malformed_json_and_cleans_hanging_proces
     response = await task
     assert response.exit_code != 0
     assert response.error_category == "process"
+
+
+@pytest.mark.asyncio
+async def test_opencode_adapter_bounds_oversized_stdout_and_stderr(
+    tmp_path: Path,
+) -> None:
+    limit = 1_024
+    adapter = OpenCodeAdapter(
+        str(fake_opencode_python(tmp_path, output_writer())), max_output_bytes=limit
+    )
+    response = await asyncio.wait_for(adapter.execute(request(tmp_path)), timeout=5)
+    marker = "\n[output truncated]"
+    assert response.exit_code == 0
+    assert response.error_category == "malformed_response"
+    assert response.stdout.endswith(marker)
+    assert response.stderr.endswith(marker)
+    assert len(response.stdout.encode("utf-8")) <= limit + len(marker.encode("utf-8"))
+    assert len(response.stderr.encode("utf-8")) <= limit + len(marker.encode("utf-8"))
+    assert not adapter._processes
+
+
+@pytest.mark.asyncio
+async def test_opencode_adapter_preserves_nonzero_exit_with_bounded_output(
+    tmp_path: Path,
+) -> None:
+    limit = 1_024
+    adapter = OpenCodeAdapter(
+        str(fake_opencode_python(tmp_path, output_writer(exit_code=7))),
+        max_output_bytes=limit,
+    )
+    response = await asyncio.wait_for(adapter.execute(request(tmp_path)), timeout=5)
+    marker = "\n[output truncated]"
+    assert response.exit_code == 7
+    assert response.error_category == "process"
+    assert response.stdout.endswith(marker)
+    assert response.stderr.endswith(marker)
+    assert len(response.stdout.encode("utf-8")) <= limit + len(marker.encode("utf-8"))
+    assert len(response.stderr.encode("utf-8")) <= limit + len(marker.encode("utf-8"))
+    assert not adapter._processes
+
+
+@pytest.mark.asyncio
+async def test_opencode_adapter_timeout_cleans_continuous_output(
+    tmp_path: Path,
+) -> None:
+    adapter = OpenCodeAdapter(
+        str(fake_opencode_python(tmp_path, output_writer(continuous=True))),
+        max_output_bytes=1_024,
+    )
+    engine = ExecutionCoordinator(
+        AdapterRegistry([adapter]),
+        settings=settings(
+            network_enabled=True,
+            agent_execution_timeout_seconds=1,
+            agent_execution_max_output_bytes=1_024,
+        ),
+    )
+    outcome = await asyncio.wait_for(
+        engine.execute(request(tmp_path, timeout_seconds=1)), timeout=5
+    )
+    assert outcome.state == ExecutionState.TIMED_OUT
+    assert outcome.error_category == "timeout"
+    assert not adapter._processes
+
+
+@pytest.mark.asyncio
+async def test_opencode_adapter_cancellation_cleans_continuous_output(
+    tmp_path: Path,
+) -> None:
+    adapter = OpenCodeAdapter(
+        str(fake_opencode_python(tmp_path, output_writer(continuous=True))),
+        max_output_bytes=1_024,
+    )
+    task = asyncio.create_task(adapter.execute(request(tmp_path)))
+    for _ in range(100):
+        if adapter._processes:
+            break
+        await asyncio.sleep(0.01)
+    assert adapter._processes
+    await adapter.cancel()
+    response = await asyncio.wait_for(task, timeout=5)
+    assert response.exit_code != 0
+    assert response.error_category == "process"
+    assert not adapter._processes
+
+
+@pytest.mark.asyncio
+async def test_bounded_reader_exact_boundary_and_multiple_chunks(
+    tmp_path: Path,
+) -> None:
+    adapter = OpenCodeAdapter("unused", max_output_bytes=8)
+    exact_stdout, exact_truncated = await adapter._drain_bounded(
+        stream_with(b"abcd", b"efgh")
+    )
+    oversized_stderr, oversized_truncated = await adapter._drain_bounded(
+        stream_with(b"abcd", b"efgh", b"i")
+    )
+    assert exact_stdout == b"abcdefgh"
+    assert not exact_truncated
+    assert adapter._bound(exact_stdout, exact_truncated) == "abcdefgh"
+    assert oversized_stderr == b"abcdefgh"
+    assert oversized_truncated
+    assert adapter._bound(oversized_stderr, oversized_truncated).endswith(
+        "\n[output truncated]"
+    )
+
+
+@pytest.mark.asyncio
+async def test_bounded_reader_retains_limit_before_stream_exit(tmp_path: Path) -> None:
+    del tmp_path
+    adapter = OpenCodeAdapter("unused", max_output_bytes=8)
+    stream = stream_with(b"x" * 32, eof=False)
+    task = asyncio.create_task(adapter._drain_bounded(stream))
+    await asyncio.sleep(0)
+    assert not task.done()
+    stream.feed_eof()
+    retained, truncated = await task
+    assert retained == b"x" * 8
+    assert truncated
+
+
+@pytest.mark.asyncio
+async def test_bounded_reader_clips_single_large_chunk_per_stream(
+    tmp_path: Path,
+) -> None:
+    del tmp_path
+    adapter = OpenCodeAdapter("unused", max_output_bytes=8)
+    stdout, stderr = await asyncio.gather(
+        adapter._drain_bounded(stream_with(b"o" * 64)),
+        adapter._drain_bounded(stream_with(b"e" * 64)),
+    )
+    assert stdout == (b"o" * 8, True)
+    assert stderr == (b"e" * 8, True)
+
+
+@pytest.mark.asyncio
+async def test_opencode_adapter_reader_failure_terminates_process(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    adapter = OpenCodeAdapter(
+        str(fake_opencode_python(tmp_path, "import time\ntime.sleep(60)"))
+    )
+    original = adapter._drain_bounded
+    failed = False
+
+    async def failing_reader(
+        stream: asyncio.StreamReader,
+    ) -> tuple[bytes, bool]:
+        nonlocal failed
+        if not failed:
+            failed = True
+            raise RuntimeError("reader failed")
+        return await original(stream)
+
+    monkeypatch.setattr(adapter, "_drain_bounded", failing_reader)
+    with pytest.raises(RuntimeError, match="reader failed"):
+        await asyncio.wait_for(adapter.execute(request(tmp_path)), timeout=5)
+    assert not adapter._processes
+
+
+@pytest.mark.asyncio
+async def test_settle_readers_cancellation_cancels_pending_reader(
+    tmp_path: Path,
+) -> None:
+    del tmp_path
+    adapter = OpenCodeAdapter("unused")
+    started = asyncio.Event()
+
+    async def blocked_reader() -> tuple[bytes, bool]:
+        started.set()
+        await asyncio.Event().wait()
+        return b"", False
+
+    reader = asyncio.create_task(blocked_reader())
+    cleanup = asyncio.create_task(adapter._settle_readers([reader]))
+    await started.wait()
+    cleanup.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await cleanup
+    assert reader.cancelled()
