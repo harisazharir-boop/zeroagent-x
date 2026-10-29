@@ -193,6 +193,15 @@ chunk = b"x" * 4096
 """
 
 
+def continuous_output_opencode(tmp_path: Path) -> Path:
+    if os.name == "nt":
+        return fake_opencode(
+            tmp_path,
+            ":loop\r\necho stdout\r\necho stderr 1>&2\r\ngoto loop",
+        )
+    return fake_opencode_python(tmp_path, output_writer(continuous=True))
+
+
 def stream_with(*chunks: bytes, eof: bool = True) -> asyncio.StreamReader:
     stream = asyncio.StreamReader()
     for chunk in chunks:
@@ -298,7 +307,7 @@ async def test_opencode_adapter_timeout_cleans_continuous_output(
     tmp_path: Path,
 ) -> None:
     adapter = OpenCodeAdapter(
-        str(fake_opencode_python(tmp_path, output_writer(continuous=True))),
+        str(continuous_output_opencode(tmp_path)),
         max_output_bytes=1_024,
     )
     engine = ExecutionCoordinator(
@@ -322,7 +331,7 @@ async def test_opencode_adapter_cancellation_cleans_continuous_output(
     tmp_path: Path,
 ) -> None:
     adapter = OpenCodeAdapter(
-        str(fake_opencode_python(tmp_path, output_writer(continuous=True))),
+        str(continuous_output_opencode(tmp_path)),
         max_output_bytes=1_024,
     )
     task = asyncio.create_task(adapter.execute(request(tmp_path)))
